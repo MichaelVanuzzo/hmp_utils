@@ -1,6 +1,6 @@
 # hmp_utility
 
-Install in a apptainer container with:
+Install in an apptainer container with:
 ```
 apt install . --user
 ```
