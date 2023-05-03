@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='hmp_utility',
+    name='hmp_utils',
     version='0.0.1',
     author="C-Square Team",
     author_email='csquare@mailfence.com',
