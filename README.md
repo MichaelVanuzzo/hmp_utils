@@ -1,4 +1,4 @@
-# hmp_utility
+# hmp_utils
 
 Install in an apptainer container with:
 ```
