@@ -31,8 +31,8 @@ class ForwardKinematics:
         self.body_links_offsets = np.zeros([self.num_keypoints, 3])
         self.body_links_offsets[0] = offsets[0]
         # compute the vectors that connect a body keypoint to its parent (not needed for the root joint)
-        offsets = np.array(offsets)
-        self.body_links_offsets[1:] = offsets[1:] - offsets[parents[1:]]
+        offsets_ = np.array(offsets)
+        self.body_links_offsets[1:] = offsets_[1:] - offsets_[parents[1:]]
         self.parents = parents
 
         
