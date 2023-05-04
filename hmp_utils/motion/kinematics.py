@@ -16,7 +16,7 @@ class ForwardKinematics:
     
     Inspiration credits to [SPL paper](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
     """
-    def __init__(self, offsets, parents) -> None:
+    def __init__(self, offsets:list, parents:list) -> None:
         """
         - number of keypoints:
             - defaults to the number of keypoints in SMPL (24)
@@ -57,14 +57,12 @@ class ForwardKinematics:
             joint_keyp_ids = np.arange(len(joint_rots_arr))
         
         # return: (..., num_keypoints, 3)
-        if len(orig_shape) > 2:
-            return_shape = (*orig_shape[:-2], self.num_keypoints, 3)
-        else:
-            return_shape = (self.num_keypoints, 3)
-        
+        N = orig_shape[:-2]
+        return_shape = (*N, self.num_keypoints, 3)
+            
         # the keypoints that do not represent joints are zeros, while the ones that represent joints
         # are filled with the joint rotations
-        keyp_rotations = np.zeros((self.num_keypoints, 3))
+        keyp_rotations = np.zeros((*N, self.num_keypoints, 3))
         keyp_rotations[joint_keyp_ids] = joint_rots_arr
         
         # convert angle-axis notations to rotation matrices

@@ -76,7 +76,7 @@ class MocapData:
     gender: str
 
 
-def load_mocap(filepath, joint_ids_list:'list[int]', target_framerate: float, num_axis=3,
+def load_mocap(filepath, joint_ids_list:'list[int]', target_framerate: float=None, num_axis=3,
                downsampling_tolerance=1e-3) -> Union[MocapData, None]:
     """
     Assuming AMASS trajectories are in axis-angle representation with 3 values per joint,
@@ -105,6 +105,8 @@ def load_mocap(filepath, joint_ids_list:'list[int]', target_framerate: float, nu
     
     if data is None:
         raise Exception(f'Could not load mocap file {filepath}')
+    if target_framerate is None:
+        target_framerate = float(data['mocap_framerate'])
 
     mocap_file_keys = ['poses', 'trans', 'mocap_framerate']
     if any([key not in data.files for key in mocap_file_keys]):

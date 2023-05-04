@@ -1,15 +1,91 @@
+# Keypoints are all the joints and end effectors combined
 SMPL_NR_KEYPOINTS = 24
-
+SMPL_KEYPOINTS = [i for i in range(SMPL_NR_KEYPOINTS)]
 # parents of all SMPL keypoints
 SMPL_PARENTS = [-1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
-
 # keypoints called joints are those which perform rotation relative to their parent
 SMPL_JOINTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
 # keypoints that are at the end of the kinematics tree
 SMPL_END_EFFECTORS = [10, 11, 15, 22, 23, 24]
-
 # subset of keypoints, in particular joint only, used by DIP dataset and in metrics
 SMPL_MAJOR_JOINTS = [1, 2, 3, 4, 5, 6, 9, 12, 13, 14, 15, 16, 17, 18, 19]
+
+# from [SMPLX](https://github.com/vchoutas/smplx/blob/main/smplx/joint_names.py)
+SMPLH_JOINT_NAMES = [
+    "pelvis",
+    "left_hip",
+    "right_hip",
+    "spine1",
+    "left_knee",
+    "right_knee",
+    "spine2",
+    "left_ankle",
+    "right_ankle",
+    "spine3",
+    "left_foot",
+    "right_foot",
+    "neck",
+    "left_collar",
+    "right_collar",
+    "head",
+    "left_shoulder",
+    "right_shoulder",
+    "left_elbow",
+    "right_elbow",
+    "left_wrist",
+    "right_wrist",
+    "left_index1",
+    "left_index2",
+    "left_index3",
+    "left_middle1",
+    "left_middle2",
+    "left_middle3",
+    "left_pinky1",
+    "left_pinky2",
+    "left_pinky3",
+    "left_ring1",
+    "left_ring2",
+    "left_ring3",
+    "left_thumb1",
+    "left_thumb2",
+    "left_thumb3",
+    "right_index1",
+    "right_index2",
+    "right_index3",
+    "right_middle1",
+    "right_middle2",
+    "right_middle3",
+    "right_pinky1",
+    "right_pinky2",
+    "right_pinky3",
+    "right_ring1",
+    "right_ring2",
+    "right_ring3",
+    "right_thumb1",
+    "right_thumb2",
+    "right_thumb3",
+    "nose",
+    "right_eye",
+    "left_eye",
+    "right_ear",
+    "left_ear",
+    "left_big_toe",
+    "left_small_toe",
+    "left_heel",
+    "right_big_toe",
+    "right_small_toe",
+    "right_heel",
+    "left_thumb",
+    "left_index",
+    "left_middle",
+    "left_ring",
+    "left_pinky",
+    "right_thumb",
+    "right_index",
+    "right_middle",
+    "right_ring",
+    "right_pinky",
+]
 
 # The offsets are vectors that map the position of body joints when the body is in the 
 # T-pose standard SMPL pose, relative to the origin [0,0,0]
