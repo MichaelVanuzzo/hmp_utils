@@ -1,4 +1,3 @@
-
 SMPL_NR_KEYPOINTS = 24
 
 # parents of all SMPL keypoints
