@@ -77,7 +77,7 @@ def plot_body_keypoints(keypoints_pos: list,
     plt.show()
 
 
-def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None):
+def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **kwargs):
     """
     Set parents to None in order to use the origin as a parent for all the points.
     """
@@ -85,7 +85,8 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None):
     def plot_body_keypoints_(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
         return plot_body_keypoints(keypoints_pos=frame_joint_pos, parents=parents, fig_opts=fig_opts,
                                    elevation=elevation_slider, azimuth=azimuth_slider,
-                                   show_grid=view_axis_slider, show_keypoint_id=view_joint_slider)
+                                   show_grid=view_axis_slider, show_keypoint_id=view_joint_slider,
+                                   **kwargs)
 
     # Create the sliders and display them
     elevation_slider = widgets.FloatSlider(min=-90, max=90, value=20, description='Elevation')
