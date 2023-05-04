@@ -2,10 +2,10 @@ import os
 import numpy as np
 from tqdm import trange
 import matplotlib.pyplot as plt
-from motion import mocap_processor
 from matplotlib.animation import FuncAnimation
-from motion.kinematics import ForwardKinematics
-from motion.body_model_data import SMPL_OFFSETS, SMPL_PARENTS
+from hmp_utils.motion import mocap_processor
+from hmp_utils.motion.kinematics import ForwardKinematics
+from hmp_utils.motion.body_model_data import SMPL_OFFSETS, SMPL_PARENTS
 
 #### GENERAZIONE DATI (solo per testing) ####
 

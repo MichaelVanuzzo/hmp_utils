@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional, Union
-from motion.pose_conversions import aa2rotmat
-from motion.body_model_data import SMPL_OFFSETS, SMPL_PARENTS, SMPL_NR_KEYPOINTS
+from hmp_utils.motion.pose_conversions import aa2rotmat
+from hmp_utils.motion.body_model_data import SMPL_OFFSETS, SMPL_PARENTS, SMPL_NR_KEYPOINTS
 
 # body offsets represent the vector that starts at the root joint (pelvis) and
 # ends to a keypoint in the standard SMPL T-pose
