@@ -4,6 +4,7 @@ import numpy as np
 from scipy import signal
 from typing import Union
 from enum import Enum, auto
+from typing import Optional
 from dataclasses import dataclass
 
 
@@ -76,7 +77,8 @@ class MocapData:
     gender: str
 
 
-def load_mocap(filepath, joint_ids_list:'list[int]', target_framerate: float=None, num_axis=3,
+def load_mocap(filepath, joint_ids_list:'list[int]', 
+               target_framerate: Optional[float]=None, 
                downsampling_tolerance=1e-3) -> Union[MocapData, None]:
     """
     Assuming AMASS trajectories are in axis-angle representation with 3 values per joint,
@@ -90,7 +92,6 @@ def load_mocap(filepath, joint_ids_list:'list[int]', target_framerate: float=Non
     - `filepath` (str): filepath to the AMASS mocap .npz file
     - `joint_ids_list` (list[int]): joint ids for which to return the trajectory
     - `target_framerate` (float): the framerate to which the mocap trajectories should be downsampled to
-    - `num_axis` (int):
     
     ---
     ### Returns: 
