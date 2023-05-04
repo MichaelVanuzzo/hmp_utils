@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Union, Optional
 
-from ..motion.pose_conversions import aa2euler, aa2rotmat, rotmat2aa, DEFAULT_EULER_SEQ
+from hmp_utils.motion.pose_conversions import aa2euler, aa2rotmat, rotmat2aa, DEFAULT_EULER_SEQ
 
 """
 ## Example usage:
