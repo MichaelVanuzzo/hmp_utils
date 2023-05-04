@@ -2,6 +2,7 @@ import numpy as np
 from typing import Union, Optional
 
 from hmp_utils.motion.pose_conversions import aa2euler, aa2rotmat, rotmat2aa, DEFAULT_EULER_SEQ
+from hmp_utils.motion.kinematics import ForwardKinematics
 
 """
 ## Example usage:
@@ -227,7 +228,8 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
         return np.mean(angles[..., joints_to_metric], axis=-1)
 
 
-def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints:list):
+def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints:list,
+                     offsets, parents):
     """
     Given the angle-axis representation of the joints, compute the forward kinematics on the
     skeleton and caculate the euclidean distance between each joint (among the joints selected
@@ -241,8 +243,9 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
     """
     
     # convert angles into positions
-    predictions_pos = 
-    targets_pos = 
+    kine = ForwardKinematics(offsets, parents)
+    predictions_pos = kine.compute_fk(predictions)
+    targets_pos = kine.compute_fk(targets)
 
     # return the euclidean distance between the joint positions
     return np.sqrt(np.sum((predictions_pos - targets_pos) ** 2, axis=-1))
