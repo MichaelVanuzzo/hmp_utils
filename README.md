@@ -12,7 +12,9 @@
 Code for evaluation of machine learning models using recognized metrics.
 
 - **Euler angle error** :
-- **Geodesic** (joint angle difference) :
+
+- **Geodesic** (joint angle difference) : the angle needed to align each joint in the predictions to the targets. Credits to: [SPL](https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py)
+
 - **Positional** : 
 
 ### Motion
