@@ -4,39 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum, auto
 import logging
+from PIL import Image
 
-"""
-#### GENERAZIONE DATI (solo per testing) ####
-
-mocap_filepaths = ['/media/sata-SSD-250GB/home/frabors/AMASS_DATASET/BMLmovi/Subject_11_F_MoSh/Subject_11_F_10_poses.npz',
-    '/media/sata-SSD-250GB/home/frabors/AMASS_DATASET/BMLmovi/Subject_11_F_MoSh/Subject_11_F_5_poses.npz']
-target_framerate = 30
-# SMPL model is based on 24 keypoints, the last 2 are the hands so we load the first 22 joints (0 to 21*3 inclusive)
-joint_ids_to_load = np.arange(24)
-
-forward_kine = ForwardKinematics(SMPL_OFFSETS['neutral'], SMPL_PARENTS)
-
-mocaps_list = []
-for filepath in mocap_filepaths:
-    motion = mocap_processor.load_mocap(filepath, joint_ids_to_load, target_framerate)
-    assert motion is not None
-
-    mocap_positions = []
-    for frame in trange(len(motion.rots)):
-        mocap_positions.append(forward_kine.compute_fk(motion.rots[frame], apply_root_rotation=True))
-    mocaps_list.append(mocap_positions)"""
-
-#### VISUALIZZATORE ####
-# INPUT: 
-#   - lista di mocap in rappresentazione di posizioni assolute di tutti i keypoints
-#   - lista di titoli da mettere negli eventuali subplots
-#   - lista di ID del subplot. Se un mocap ha lo stesso ID di un altro significa che verranno 
-#       sovrapposti nello stesso subplot
 
 class AnimationMode(Enum):
     html = auto()
     plotlib = auto()
-    save_gif = auto()
 
 class CameraOrientation:
     def __init__(self, azimuth, elevation):
@@ -48,7 +21,8 @@ DUMMY_MAX_INT = 100000000
 
 def pose_animation(motions_list:list,
               parents,
-              animation_mode:AnimationMode=AnimationMode.html,
+              animation_mode:AnimationMode=AnimationMode.plotlib,
+              gif_savepath:Optional[str]=None,
               animation_framerate:float=30,
               subplot_titles:Optional['list[str]']=None,
               subplot_ids:Optional[list]=None,
@@ -205,6 +179,13 @@ def pose_animation(motions_list:list,
         # grid visibility
         if not show_grid:
             ax.axis('off')
-        
-    ani = FuncAnimation(fig, update, frames=min_len_frames, interval=1000/animation_framerate) #blit=False)
-    plt.show()
+
+    ani = FuncAnimation(fig, update, frames=min_len_frames, interval=1000/animation_framerate)
+
+    # save animation as gif
+    # gif_savepath
+    if gif_savepath:
+        ani.save(gif_savepath, writer='pillow', fps=30)
+
+    if animation_mode == AnimationMode.plotlib:
+        plt.show()
