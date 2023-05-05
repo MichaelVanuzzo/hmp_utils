@@ -6,7 +6,7 @@ from enum import Enum, auto
 import logging
 from PIL import Image
 
-
+#tt
 class AnimationMode(Enum):
     html = auto()
     plotlib = auto()
