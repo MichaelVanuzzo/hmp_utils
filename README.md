@@ -31,6 +31,7 @@ Simple visualization tools for body pose as plots of keypoints connected by line
 ## Package Install
 
 #### Install in an apptainer container
+Clone the repository in a directory, navigate into that directory and execute:
 ```
 pip install . --user
 ```
