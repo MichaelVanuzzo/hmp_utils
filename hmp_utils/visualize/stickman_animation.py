@@ -10,6 +10,7 @@ from PIL import Image
 class AnimationMode(Enum):
     html = auto()
     plotlib = auto()
+    nogui = auto()
 
 class CameraOrientation:
     def __init__(self, azimuth, elevation):
@@ -31,6 +32,10 @@ def pose_animation(motions_list:list,
               show_keypoint_id:bool=False,
               fig_opts:Optional[dict]=None
               ):
+
+    if animation_mode == AnimationMode.nogui and gif_savepath is None:
+        logging.warning('When using AnimationMode.nogui, a savepath should be provided '
+                        'to save the animation')
 
     # number of subplot to show
     if subplot_ids is None:
@@ -95,7 +100,7 @@ def pose_animation(motions_list:list,
         figure_title = subplot_titles[axid]
         ax.set_title(f'{figure_title}')
         # this is text to display other information during the animation
-        ax_texts.append(ax.text2D(0.05, 0.05, '', transform=ax.transAxes, ha='left', va='bottom'))
+        ax_texts.append(ax.text2D(0.05, 0.05, '', transform=ax.transAxes, ha='left', va='bottom')) # type: ignore
 
     # -- DEFINE LINES TO BE PLOTTED --
     # For efficiency, the lines are plotted one time and then updated during the animation
@@ -167,14 +172,14 @@ def pose_animation(motions_list:list,
     
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
-        ax.axes.set_xlim3d(left=camera_range[0], right=camera_range[1])
-        ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1])
-        ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1])
+        ax.axes.set_xlim3d(left=camera_range[0], right=camera_range[1]) # type: ignore
+        ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
+        ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
             
         # set camera orientations for each subplot
         elev = camera_orientations[ax_id].elevation
         azim = camera_orientations[ax_id].azimuth
-        ax.view_init(elev=elev, azim=azim)
+        ax.view_init(elev=elev, azim=azim) # type: ignore
             
         # grid visibility
         if not show_grid:
@@ -183,7 +188,6 @@ def pose_animation(motions_list:list,
     ani = FuncAnimation(fig, update, frames=min_len_frames, interval=1000/animation_framerate)
 
     # save animation as gif
-    # gif_savepath
     if gif_savepath:
         ani.save(gif_savepath, writer='pillow', fps=30)
 
