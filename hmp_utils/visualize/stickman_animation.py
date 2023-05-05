@@ -5,9 +5,7 @@ from matplotlib.animation import FuncAnimation
 from enum import Enum, auto
 import logging
 from PIL import Image
-from mpl_toolkits.mplot3d import Axes3D
 
-#tt
 class AnimationMode(Enum):
     html = auto()
     plotlib = auto()
@@ -88,6 +86,8 @@ def pose_animation(motions_list:list,
 
     # create figure
     fig, axes = plt.subplots(1, num_subplots, subplot_kw={'projection':'3d'}, **fig_opts)
+    # white figure background
+    fig.set_facecolor('white')
     
     if not isinstance(axes, np.ndarray):
         # single subplot
@@ -149,7 +149,7 @@ def pose_animation(motions_list:list,
             # Plot the points
             for i, point in enumerate(keypoint_positions):
 
-                # keypoint label
+                # keypoint label - BUG: not working properly
                 if show_keypoint_id:
                     ax.text(*point, f'{i}', fontsize=10)
 
@@ -196,4 +196,9 @@ def pose_animation(motions_list:list,
         ani.save(gif_savepath, writer='pillow', fps=30)
 
     if animation_mode == AnimationMode.plotlib:
-        plt.show()
+        
+    if animation_mode == AnimationMode.html:
+        # html_ani = ani.to_html5_video()
+        html_ani = ani.to_jshtml()
+        display(HTML(html_ani))
+        plt.close()
