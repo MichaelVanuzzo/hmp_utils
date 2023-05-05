@@ -5,6 +5,7 @@ from matplotlib.animation import FuncAnimation
 from enum import Enum, auto
 import logging
 from PIL import Image
+from mpl_toolkits.mplot3d import Axes3D
 
 class AnimationMode(Enum):
     html = auto()
