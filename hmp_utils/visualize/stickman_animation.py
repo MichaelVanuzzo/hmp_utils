@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from typing import Optional, Union
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -123,7 +124,7 @@ def pose_animation(motions_list:list,
                     parent_point = keypoint_positions[parent]
 
                 # if it has a parent (not itself and not -1), connect it with a line
-                if parent != i and parent != -1 and parent != None:
+                if parent != i and parent != -1:
                     line = ax.plot([keypoint_pos[0], parent_point[0]], [keypoint_pos[1], parent_point[1]],
                             [keypoint_pos[2], parent_point[2]], '-o', markersize=2.0)
                     plot_lines[mocap_id].append(line)

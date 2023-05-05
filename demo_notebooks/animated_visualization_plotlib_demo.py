@@ -1,4 +1,5 @@
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
 from hmp_utils.motion.body_model_data import SMPL_KEYPOINTS, SMPL_OFFSETS, SMPL_PARENTS
 from hmp_utils.motion.mocap_processor import load_mocap
 from hmp_utils.motion.kinematics import ForwardKinematics
@@ -19,7 +20,7 @@ keypoints_positions = kine.compute_fk(motion.rots, apply_root_rotation=True)
 
 # -- ANIMATION 1 --
 motions_list = [keypoints_positions, keypoints_positions]
-subplot_ids = [0, 1]
+subplot_ids = [0, 0]
 subplot_colors = ['r', 'm']
 subplot_titles = ['mocap 1', 'mocap 2']
 camera_orientations = [CameraOrientation(100, 20), CameraOrientation(0, 0)]
