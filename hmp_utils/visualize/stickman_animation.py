@@ -10,7 +10,6 @@ from PIL import Image
 class AnimationMode(Enum):
     html = auto()
     plotlib = auto()
-    nogui = auto()
 
 class CameraOrientation:
     def __init__(self, azimuth, elevation):
@@ -32,10 +31,6 @@ def pose_animation(motions_list:list,
               show_keypoint_id:bool=False,
               fig_opts:Optional[dict]=None
               ):
-
-    if animation_mode == AnimationMode.nogui and gif_savepath is None:
-        logging.warning('When using AnimationMode.nogui, a savepath should be provided '
-                        'to save the animation')
 
     # number of subplot to show
     if subplot_ids is None:
@@ -166,8 +161,8 @@ def pose_animation(motions_list:list,
                 if parent != i and parent != -1:
                     if i == 23:  # ?? sistemare
                         continue
-                    plot_lines[motion_id][i][0].set_data([[point[0], parent_point[0]], [point[1], parent_point[1]]])
-                    plot_lines[motion_id][i][0].set_3d_properties([point[2], parent_point[2]])
+                    plot_lines[motion_id][i][0].set_data(np.array([[point[0], parent_point[0]], [point[1], parent_point[1]]]))
+                    plot_lines[motion_id][i][0].set_3d_properties(np.array([point[2], parent_point[2]]))
                     plot_lines[motion_id][i][0].set_color('b')
     
     # apply plot options to each axis
