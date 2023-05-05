@@ -176,7 +176,7 @@ def pose_animation(motions_list:list,
                 # -- Update lines positions --
                 # if it has a parent (not itself and not -1), connect it with a line
                 if parent != i and parent != -1:
-                    if i == 23:
+                    if i == 23:  # ?? sistemare
                         continue
                     plot_lines[motion_id][i][0].set_data([[point[0], parent_point[0]], [point[1], parent_point[1]]])
                     plot_lines[motion_id][i][0].set_3d_properties([point[2], parent_point[2]])
