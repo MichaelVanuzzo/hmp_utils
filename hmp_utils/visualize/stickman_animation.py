@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum, auto
 import logging
-from IPython.display import display, HTML
-
+from PIL import Image
+from mpl_toolkits.mplot3d import Axes3D
 
 class AnimationMode(Enum):
     html = auto()
@@ -27,6 +27,7 @@ def pose_animation(motions_list:list,
               animation_framerate:float=30,
               subplot_titles:Optional['list[str]']=None,
               subplot_ids:Optional[list]=None,
+              subplot_colors:Optional[list]=None,
               camera_orientations:Optional[Union[CameraOrientation, 'list[CameraOrientation]']]=None,
               show_grid:bool=False,
               show_keypoint_id:bool=False,
@@ -39,6 +40,10 @@ def pose_animation(motions_list:list,
         subplot_ids = [0 for _ in motions_list]
     num_subplots = len(set(subplot_ids))
     
+    if subplot_colors is None:
+        # assign the same color to all the skeletons
+        subplot_colors = ['b' for _ in motions_list]
+
     # subplot titles
     if subplot_titles is None:
         subplot_titles = [f'Motion {i}' for i in range(num_subplots)]
@@ -118,9 +123,10 @@ def pose_animation(motions_list:list,
                     parent_point = keypoint_positions[parent]
 
                 # if it has a parent (not itself and not -1), connect it with a line
-                if parent != i and parent != -1:
+                if parent != i and parent != -1 and parent != None:
+                    print(parent)
                     line = ax.plot([keypoint_pos[0], parent_point[0]], [keypoint_pos[1], parent_point[1]],
-                            [keypoint_pos[2], parent_point[2]], 'b-', markersize=2.0)
+                            [keypoint_pos[2], parent_point[2]], '-o', markersize=2.0)
                     plot_lines[mocap_id].append(line)
 
             # Set camera orientations for each subplot
@@ -163,7 +169,7 @@ def pose_animation(motions_list:list,
                         continue
                     plot_lines[motion_id][i][0].set_data(np.array([[point[0], parent_point[0]], [point[1], parent_point[1]]]))
                     plot_lines[motion_id][i][0].set_3d_properties(np.array([point[2], parent_point[2]]))
-                    plot_lines[motion_id][i][0].set_color('b')
+                    plot_lines[motion_id][i][0].set_color(subplot_colors[motion_id])
     
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
@@ -192,7 +198,6 @@ def pose_animation(motions_list:list,
         ani.save(gif_savepath, writer='pillow', fps=30)
 
     if animation_mode == AnimationMode.plotlib:
-        plt.show()
         
     if animation_mode == AnimationMode.html:
         # html_ani = ani.to_html5_video()
