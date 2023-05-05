@@ -152,7 +152,7 @@ def pose_animation(motions_list:list,
             # Set camera orientations for each subplot
             elev = camera_orientations[ax_id].elevation
             azim = camera_orientations[ax_id].azimuth
-            ax.view_init(elev=20, azim=100)
+            ax.view_init(elev=elev, azim=azim)
             # grid visibility
             if not show_grid:
                 ax.axis('off')
@@ -190,7 +190,6 @@ def pose_animation(motions_list:list,
                     plot_lines[motion_id][i][0].set_data([[point[0], parent_point[0]], [point[1], parent_point[1]]])
                     plot_lines[motion_id][i][0].set_3d_properties([point[2], parent_point[2]])
                     plot_lines[motion_id][i][0].set_color('b')
-                    # [point[2], parent_point[2]
     
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
@@ -201,7 +200,7 @@ def pose_animation(motions_list:list,
         # set camera orientations for each subplot
         elev = camera_orientations[ax_id].elevation
         azim = camera_orientations[ax_id].azimuth
-        ax.view_init(elev=20, azim=100)
+        ax.view_init(elev=elev, azim=azim)
             
         # grid visibility
         if not show_grid:
