@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum, auto
 import logging
-from PIL import Image
-from mpl_toolkits.mplot3d import Axes3D
+from IPython.display import display, HTML
+
 
 class AnimationMode(Enum):
     html = auto()
@@ -124,7 +124,6 @@ def pose_animation(motions_list:list,
 
                 # if it has a parent (not itself and not -1), connect it with a line
                 if parent != i and parent != -1 and parent != None:
-                    print(parent)
                     line = ax.plot([keypoint_pos[0], parent_point[0]], [keypoint_pos[1], parent_point[1]],
                             [keypoint_pos[2], parent_point[2]], '-o', markersize=2.0)
                     plot_lines[mocap_id].append(line)
@@ -198,6 +197,7 @@ def pose_animation(motions_list:list,
         ani.save(gif_savepath, writer='pillow', fps=30)
 
     if animation_mode == AnimationMode.plotlib:
+        plt.show()
         
     if animation_mode == AnimationMode.html:
         # html_ani = ani.to_html5_video()
