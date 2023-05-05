@@ -9,6 +9,7 @@ from IPython.display import display, HTML
 
 class AnimationMode(Enum):
     html = auto()
+    html5 = auto()
     plotlib = auto()
 
 class CameraOrientation:
@@ -198,3 +199,9 @@ def pose_animation(motions_list:list,
         html_ani = ani.to_jshtml()
         display(HTML(html_ani))
         plt.close()
+
+    if animation_mode == AnimationMode.html5:
+        html_ani = ani.to_html5_video()
+        display(HTML(html_ani))
+        plt.close()
+        
