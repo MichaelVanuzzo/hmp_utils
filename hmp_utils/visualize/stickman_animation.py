@@ -95,13 +95,10 @@ def pose_animation(motions_list:list,
     if isinstance(axes, np.ndarray):
         axes = axes.tolist()
 
-    ax_texts = []
-    for axid, ax in enumerate(axes):
-        # title of subplot
-        figure_title = subplot_titles[axid]
-        ax.set_title(f'{figure_title}')
-        # this is text to display other information during the animation
-        ax_texts.append(ax.text2D(0.05, 0.05, '', transform=ax.transAxes, ha='left', va='bottom')) # type: ignore
+    # this is text to display other information during the animation
+    subplot_info_text_lst = []
+    for ax in axes:
+        subplot_info_text_lst.append(ax.text2D(0.05, 0.05, '', transform=ax.transAxes, ha='left', va='bottom')) # type: ignore
 
     # -- DEFINE LINES TO BE PLOTTED --
     # For efficiency, the lines are plotted one time and then updated during the animation
@@ -146,7 +143,7 @@ def pose_animation(motions_list:list,
         for motion_id, motion_positions in enumerate(motions_list):
 
             ax = axes[subplot_ids[motion_id]]
-            ax_texts[subplot_ids[motion_id]].set_text(f'frame: {frame}/{len(motion_positions)} | time: {frame/animation_framerate:.2f} s')
+            subplot_info_text_lst[subplot_ids[motion_id]].set_text(f'frame: {frame}/{len(motion_positions)} | time: {frame/animation_framerate:.2f} s')
             keypoint_positions = motion_positions[frame]
 
             # Plot the points
@@ -174,6 +171,11 @@ def pose_animation(motions_list:list,
     
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
+            # title of subplot
+        figure_title = subplot_titles[ax_id]
+        ax.set_title(f'{figure_title}')
+        
+        # ranges of visualization
         ax.axes.set_xlim3d(left=camera_range[0], right=camera_range[1]) # type: ignore
         ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
         ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
