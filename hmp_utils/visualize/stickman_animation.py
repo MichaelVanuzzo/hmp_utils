@@ -1,10 +1,9 @@
-import os
 import numpy as np
-from tqdm import trange
 from typing import Optional, Union
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from enum import Enum, auto
+import logging
 
 """
 #### GENERAZIONE DATI (solo per testing) ####
@@ -84,6 +83,11 @@ def pose_animation(motions_list:list,
         raise Exception('Please provide a single camera orientation, or provide as many '
                         f'camera orientations as there are subplots. Num subplots: {num_subplots}')
     
+    # NOTE: keypoint ID visualization is not yet fully implemented. The text elements should be initialized like
+    # the body lines and their positions updated every frame for efficiency.
+    if show_keypoint_id:
+        logging.warning('Show keypoint ID is not yet working properly')
+    
     # find minimum duration of motions, that is where to stop the animation
     min_len_frames = DUMMY_MAX_INT
     for mocap_pos in motions_list:
@@ -103,8 +107,13 @@ def pose_animation(motions_list:list,
     # -- -- -- -- -- -- -- -- -- --
 
     # create figure
-    fig, *axes = plt.subplots(1, num_subplots, subplot_kw={'projection':'3d'}, **fig_opts)
-    axes = axes[0]
+    fig, axes = plt.subplots(1, num_subplots, subplot_kw={'projection':'3d'}, **fig_opts)
+    
+    if not isinstance(axes, np.ndarray):
+        # single subplot
+        axes = [axes]
+    if isinstance(axes, np.ndarray):
+        axes = axes.tolist()
 
     ax_texts = []
     for axid, ax in enumerate(axes):
