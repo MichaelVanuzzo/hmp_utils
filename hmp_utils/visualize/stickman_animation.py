@@ -47,7 +47,7 @@ class CameraOrientation:
 # NOTE: this needs to be replaced with something more elegant
 DUMMY_MAX_INT = 100000000
 
-def animation(motions_list:list,
+def pose_animation(motions_list:list,
               parents,
               animation_mode:AnimationMode=AnimationMode.html,
               animation_framerate:float=30,
@@ -61,7 +61,8 @@ def animation(motions_list:list,
 
     # number of subplot to show
     if subplot_ids is None:
-        subplot_ids = [0]
+        # show all mocaps in the same plot
+        subplot_ids = [0 for _ in motions_list]
     num_subplots = len(set(subplot_ids))
     
     # subplot titles
@@ -102,7 +103,7 @@ def animation(motions_list:list,
     # -- -- -- -- -- -- -- -- -- --
 
     # create figure
-    fig, *axes = plt.subplots(1, num_subplots, subplot_kw={'projection':'3d'}, fig_kw=fig_opts)
+    fig, *axes = plt.subplots(1, num_subplots, subplot_kw={'projection':'3d'}, **fig_opts)
     axes = axes[0]
 
     ax_texts = []
@@ -118,8 +119,8 @@ def animation(motions_list:list,
     # shape: (num_mocaps, num_keypoints)
     plot_lines = []
     for mocap_id, mocap_positions in enumerate(motions_list):
-
-            ax = axes[subplot_ids[mocap_id]]
+            ax_id = subplot_ids[mocap_id]
+            ax = axes[ax_id]
             # le linee sono inizializzate nel primo frame del mocap
             keypoint_positions = mocap_positions[0]
 
@@ -136,11 +137,14 @@ def animation(motions_list:list,
                 # if it has a parent (not itself and not -1), connect it with a line
                 if parent != i and parent != -1:
                     line = ax.plot([keypoint_pos[0], parent_point[0]], [keypoint_pos[1], parent_point[1]],
-                            [keypoint_pos[2], parent_point[2]], 'b-')
+                            [keypoint_pos[2], parent_point[2]], 'b-', markersize=2.0)
                     plot_lines[mocap_id].append(line)
 
-            # Set the camera angle
-            ax.view_init(elev=camera_elevation, azim=camera_azimuth)
+            # Set camera orientations for each subplot
+            elev = camera_orientations[ax_id].elevation
+            azim = camera_orientations[ax_id].azimuth
+            ax.view_init(elev=20, azim=100)
+            # grid visibility
             if not show_grid:
                 ax.axis('off')
 
@@ -185,7 +189,7 @@ def animation(motions_list:list,
         ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1])
         ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1])
             
-        # retrive camera orientations for each subplot
+        # set camera orientations for each subplot
         elev = camera_orientations[ax_id].elevation
         azim = camera_orientations[ax_id].azimuth
         ax.view_init(elev=20, azim=100)
