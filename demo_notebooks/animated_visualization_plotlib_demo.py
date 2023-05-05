@@ -23,14 +23,13 @@ subplot_ids = [0, 1]
 subplot_colors = ['r', 'm']
 subplot_titles = ['mocap 1', 'mocap 2']
 camera_orientations = [CameraOrientation(100, 20), CameraOrientation(0, 0)]
-pose_animation(motions_list, SMPL_PARENTS, subplot_ids=[0,1], 
+pose_animation(motions_list, SMPL_PARENTS, subplot_ids=subplot_ids, 
                camera_orientations=camera_orientations, subplot_titles=subplot_titles,
                subplot_colors=subplot_colors)
 
 # -- ANIMATION 2 --
 # example_offset = np.array([0.5, 0, 0])
 # motions_list = [keypoints_positions, keypoints_positions + example_offset]
-# subplot_ids = [0, 1]
 # subplot_titles = ['MOCAP']
 # camera_orientations = CameraOrientation(100, 20)
 # pose_animation(motions_list, SMPL_PARENTS, camera_orientations=camera_orientations)
