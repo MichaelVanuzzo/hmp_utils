@@ -189,8 +189,8 @@ def load_mocap(filepath,
     trans_trajectory = np.reshape(trans_trajectory, final_shape)
 
     # don't downsample
-    if (target_framerate - original_framerate) <= downsampling_tolerance:
-        return MocapData(rot_trajectory, trans_trajectory, original_framerate, target_framerate, gender)
+    if abs(target_framerate - original_framerate) <= downsampling_tolerance:
+        return MocapData(rot_trajectory, trans_trajectory, original_framerate, original_framerate, gender)
 
     # downsample to the target framerate
     if target_downsampling_method == DownsampleMethod.decimate:
@@ -209,4 +209,6 @@ def load_mocap(filepath,
     if rot_trajectory is None or trans_trajectory is None:
         return None
 
-    return MocapData(rot_trajectory, trans_trajectory, original_framerate, target_framerate, gender)
+    downsampled_framerate = original_framerate*len(trans_trajectory)/original_num_frames
+
+    return MocapData(rot_trajectory, trans_trajectory, original_framerate, downsampled_framerate, gender)
