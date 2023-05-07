@@ -23,9 +23,9 @@ DUMMY_MAX_INT = 100000000
 
 def pose_animation(motions_list:list,
               parents,
+              animation_framerate:float,
               animation_mode:AnimationMode=AnimationMode.plotlib,
               gif_savepath:Optional[str]=None,
-              animation_framerate:float=30,
               subplot_titles:Optional['list[str]']=None,
               subplot_ids:Optional[list]=None,
               subplot_colors:Optional[list]=None,
@@ -143,7 +143,6 @@ def pose_animation(motions_list:list,
         """
         function to update the figure for each frame of the animation
         """
-        count = 0
         for motion_id, motion_positions in enumerate(motions_list):
 
             ax = axes[subplot_ids[motion_id]]
