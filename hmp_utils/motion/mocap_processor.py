@@ -4,13 +4,16 @@ import numpy as np
 from scipy import signal
 from typing import Union
 from enum import Enum, auto
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional, Union
+from scipy.spatial.transform import Slerp
+from scipy.spatial.transform import Rotation
 
 
 class DownsampleMethod(Enum):
     resample = auto()
     decimate = auto()
+    slerp = auto()
 
 
 def downsample_array(source_array: np.ndarray, source_framerate: float,
@@ -22,10 +25,13 @@ def downsample_array(source_array: np.ndarray, source_framerate: float,
 
     ---
     ### Args:
-    - `source_array` (np.ndarray): array containing the whole mocap
-    - `source_framerate` (float): framerate at which the original mocap is sampled
-    - `target_framerate` (float): desired framerate of the returned mocap trajectory
-    - `method` (DownsampleMethod): either `decimate` or `resample`
+    - `source_array` (np.ndarray): array containing the sequence to be downsampled. If downsampling
+        method is `slerp`, then the rotations must be in axis-angle representation in which case
+        the array has shape: (num_frames, ..., 3)
+    - `source_framerate` (float): framerate at which the original sequence is sampled
+    - `target_framerate` (float): desired framerate of the returned sequence
+    - `method` (DownsampleMethod): either `decimate` or `resample` have general validity
+        If the method is `slerp`, then the rotations must be in axis-angle representation
 
     ---
     ### Returns:
@@ -40,6 +46,7 @@ def downsample_array(source_array: np.ndarray, source_framerate: float,
             return np.array(downsampled_array)
         except ValueError:
             # "The length of the input vector x must be greater than padlen"
+            logging.error('Downsampling decimation failed')
             return None
 
     elif method == DownsampleMethod.resample:
@@ -49,8 +56,43 @@ def downsample_array(source_array: np.ndarray, source_framerate: float,
         downsampled_array = signal.resample_poly(source_array, num_downsampled_frames, source_num_frames)
         return np.array(downsampled_array)
 
-    else:
-        raise Exception(f'Invalid downsampling method {method}')
+    elif method == DownsampleMethod.slerp:
+        
+        print('is slerp')
+        
+        if source_array.shape[-1] != 3:
+            raise Exception('When using slerp downsampling method, the provided source array '
+                            'should be in axis-angle representation with shape (..., 3). '
+                            f'Input array shape is {source_array.shape}')
+
+        # compute at which times the sampling should occur
+        original_len_sec = source_array.shape[0]/source_framerate
+        original_key_times = np.arange(start=0, stop=original_len_sec, step=1/source_framerate)
+        target_times = np.arange(start=0, stop=original_len_sec, step=1/target_framerate)
+
+        # the shape is (num_frames, ..., 3) but we need (..., num_frames, 3)
+        original_shape = source_array.shape
+        source_array = np.swapaxes(source_array, 0, -2)
+        source_array = np.reshape(source_array, (-1, 3))
+        source_rotations = Rotation.from_rotvec(source_array) # type:ignore
+        
+        # now shape (N, num_frames, 3) because slerp takes 
+        source_rotations = np.reshape(source_rotations, (-1, original_shape[0], 3))
+        
+        interpolated_rotations = []
+        for sequence in source_rotations:
+            slerp_worker = Slerp(original_key_times, sequence)
+            interpolated_sequence = slerp_worker(target_times)
+            interpolated_rotations.append(interpolated_sequence)
+            
+        interpolated_rotations = np.array(interpolated_rotations)
+        num_downsampled_frames = interpolated_rotations.shape[1]
+        # now from shape (N, num_downsampled_frames, 3) to (num_downsampled_frames, N, 3)
+        interpolated_rotations = np.swapaxes(interpolated_rotations, 0, 1)
+        return_shape = (*original_shape[:-2], num_downsampled_frames, 3)
+        return np.reshape(interpolated_rotations, return_shape)
+
+    raise Exception(f'Invalid downsampling method {method}')
 
 
 def can_decimate(source_framerate, target_framerate, tolerance=1e-3):
@@ -77,9 +119,12 @@ class MocapData:
     gender: str
 
 
-def load_mocap(filepath, joint_ids_list:'list[int]', 
+def load_mocap(filepath, 
+               keypoint_ids_to_load:Union['list[int]', np.ndarray], 
                target_framerate: Optional[float]=None, 
-               downsampling_tolerance=1e-3) -> Union[MocapData, None]:
+               downsampling_tolerance=1e-3,
+               target_downsampling_method:DownsampleMethod=DownsampleMethod.decimate
+               ) -> Union[MocapData, None]:
     """
     Assuming AMASS trajectories are in axis-angle representation with 3 values per joint,
     flattened with shape like (num_frames, num_keypoints*3).
@@ -133,7 +178,7 @@ def load_mocap(filepath, joint_ids_list:'list[int]',
 
     # select the components of the angle-axis representation to extract from the 'pose' array
     rot_trajectory = np.reshape(rot_trajectory, newshape=(original_num_frames, -1, 3))
-    rot_trajectory = rot_trajectory[:, joint_ids_list]
+    rot_trajectory = rot_trajectory[:, keypoint_ids_to_load]
 
     # reshape to (num_frames, num_joints, 3) or (num_frames, 1, 3) for translation
     final_shape = (original_num_frames, -1, 3)
@@ -145,10 +190,13 @@ def load_mocap(filepath, joint_ids_list:'list[int]',
         return MocapData(rot_trajectory, trans_trajectory, original_framerate, target_framerate, gender)
 
     # downsample to the target framerate
-    if can_decimate(original_framerate, target_framerate):
-        downsample_method = DownsampleMethod.decimate
+    if target_downsampling_method == DownsampleMethod.decimate:
+        if can_decimate(original_framerate, target_framerate):
+            downsample_method = DownsampleMethod.decimate
+        else:
+            downsample_method = DownsampleMethod.resample
     else:
-        downsample_method = DownsampleMethod.resample
+        downsample_method = target_downsampling_method
 
     rot_trajectory = downsample_array(rot_trajectory, original_framerate,
                                       target_framerate, downsample_method)
