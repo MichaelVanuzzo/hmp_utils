@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from typing import Optional, Union
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -111,23 +112,25 @@ def pose_animation(motions_list:list,
             ax = axes[ax_id]
             # le linee sono inizializzate nel primo frame del mocap
             keypoint_positions = mocap_positions[0]
-
+           
             plot_lines.append([])
             for i, keypoint_pos in enumerate(keypoint_positions):
 
-                if parents is None:
-                    parent = None
-                    parent_point = [0, 0, 0]
-                else:
-                    parent = parents[i]
-                    parent_point = keypoint_positions[parent]
-
+                # if parents[i] is None:
+                #     parent = None
+                #     parent_point = [0, 0, 0]
+                # else:
+            
+                parent = parents[i]
+                parent_point = keypoint_positions[parent]
+                
                 # if it has a parent (not itself and not -1), connect it with a line
-                if parent != i and parent != -1 and parent != None:
+              
+                if parent != -1:   
                     line = ax.plot([keypoint_pos[0], parent_point[0]], [keypoint_pos[1], parent_point[1]],
                             [keypoint_pos[2], parent_point[2]], '-o', markersize=2.0)
                     plot_lines[mocap_id].append(line)
-
+        
             # Set camera orientations for each subplot
             elev = camera_orientations[ax_id].elevation
             azim = camera_orientations[ax_id].azimuth
@@ -140,7 +143,7 @@ def pose_animation(motions_list:list,
         """
         function to update the figure for each frame of the animation
         """
-
+        count = 0
         for motion_id, motion_positions in enumerate(motions_list):
 
             ax = axes[subplot_ids[motion_id]]
@@ -153,23 +156,21 @@ def pose_animation(motions_list:list,
                 # keypoint label - BUG: not working properly
                 if show_keypoint_id:
                     ax.text(*point, f'{i}', fontsize=10)
-
-                if parents is None:
-                    parent = None
-                    parent_point = [0, 0, 0]
-                else:
-                    parent = parents[i]
-                    parent_point = keypoint_positions[parent]
+                
+                # if parents[i] is None:
+                #     parent = None
+                #     parent_point = [0, 0, 0]
+                # else:
+                parent = parents[i]
+                parent_point = keypoint_positions[parent]
 
                 # -- Update lines positions --
-                # if it has a parent (not itself and not -1), connect it with a line
-                if parent != i and parent != -1:
-                    if i == 23:  # ?? sistemare
-                        continue
-                    plot_lines[motion_id][i][0].set_data(np.array([[point[0], parent_point[0]], [point[1], parent_point[1]]]))
-                    plot_lines[motion_id][i][0].set_3d_properties(np.array([point[2], parent_point[2]]))
-                    plot_lines[motion_id][i][0].set_color(subplot_colors[motion_id])
-    
+                # if it has a parent (not itself and not -1), connect it with a line        
+                if parent != -1:
+                    plot_lines[motion_id][i-1][0].set_data(np.array([[point[0], parent_point[0]], [point[1], parent_point[1]]]))
+                    plot_lines[motion_id][i-1][0].set_3d_properties(np.array([point[2], parent_point[2]]))
+                    plot_lines[motion_id][i-1][0].set_color(subplot_colors[motion_id])
+
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
             # title of subplot
@@ -180,15 +181,6 @@ def pose_animation(motions_list:list,
         ax.axes.set_xlim3d(left=camera_range[0], right=camera_range[1]) # type: ignore
         ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
         ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
-            
-        # set camera orientations for each subplot
-        elev = camera_orientations[ax_id].elevation
-        azim = camera_orientations[ax_id].azimuth
-        ax.view_init(elev=elev, azim=azim) # type: ignore
-            
-        # grid visibility
-        if not show_grid:
-            ax.axis('off')
 
     ani = FuncAnimation(fig, update, frames=min_len_frames, interval=1000/animation_framerate)
 
