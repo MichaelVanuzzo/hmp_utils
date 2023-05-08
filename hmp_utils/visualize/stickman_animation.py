@@ -146,7 +146,7 @@ def pose_animation(motions_list:list,
         for motion_id, motion_positions in enumerate(motions_list):
 
             ax = axes[subplot_ids[motion_id]]
-            subplot_info_text_lst[subplot_ids[motion_id]].set_text(f'frame: {frame}/{len(motion_positions)} | time: {frame/animation_framerate:.2f} s')
+            subplot_info_text_lst[subplot_ids[motion_id]].set_text(f'frame: {frame+1}/{len(motion_positions)} | time: {(frame+1)/animation_framerate:.2f} s')
             keypoint_positions = motion_positions[frame]
 
             # Plot the points
