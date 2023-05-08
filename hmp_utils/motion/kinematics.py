@@ -34,22 +34,35 @@ class ForwardKinematics:
         offsets_ = np.array(offsets)
         self.body_links_offsets[1:] = offsets_[1:] - offsets_[parents[1:]]
         self.parents = parents
-
         
 
-    def compute_fk(self, joint_rots:Union[list, np.ndarray], 
+    def compute_fk(self, 
+                   joint_rots:Union[list, np.ndarray], 
                    apply_root_rotation:bool = False,
                    root_translation: Optional[Union[list, np.ndarray]] = None,
-                   joint_keyp_ids: Optional[Union[list, np.ndarray]] = None):
+                   joint_keyp_ids: Optional[Union[list, np.ndarray]] = None
+                   ) -> np.ndarray:
         """
-        - apply_root_rotation: if False, the root joint will not rotate with respect to world
-        - joint_rots is a tensor of shape (..., num_joints, 3)
-        - If root_translation is None, the keypoint positions are not translated by a global transaltion. Otherwise, 
-        if a vector is given, all the joint positions will be translated by that amount. The translation is generally
-        referred to the root joint (pelvis) translation with respect to world origin
-        - The joint_keyp_ids are used to index the joint rotations. If keypoint_ids is None, it is assumed that
+        Compute forward kinematics for the object initialized with the body offsets (global or local positions).
+        It computes only local positions, meaning that the positions are referenced to the root keypoint.
+
+        ---
+        ### Args:
+        - joint_rots (list, ndarray): relative joint rotations in angle-axis representation.
+            Shape (..., num_joints, 3)
+        - apply_root_rotation (bool): if False, the root joint will not rotate with respect to world
+        - root_translation (): If root_translation is None, the keypoint positions are not rotat by a global transaltion. 
+            Otherwise, if a vector is given, all the joint positions will be translated by that amount. 
+            The translation is generally referred to the root joint (pelvis) translation with respect to world origin
+        - joint_keyp_ids (): used to index the joint rotations. If keypoint_ids is None, it is assumed that
         the given joint rotations are in ascending order starting from 0
+
+        ---
+        ### Returns:
+        A numpy array containing the computed keypoint positions.
         """
+        
+        
         joint_rots_arr:np.ndarray = np.array(joint_rots)
         orig_shape = joint_rots_arr.shape
         

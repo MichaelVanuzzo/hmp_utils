@@ -1,12 +1,20 @@
-import numpy as np
-import time
-from typing import Optional, Union
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from enum import Enum, auto
 import logging
+import numpy as np
+from enum import Enum, auto
+import matplotlib.pyplot as plt
+from typing import Optional, Union
 from IPython.display import display, HTML
+from matplotlib.animation import FuncAnimation
 
+"""
+>> Future Developement Ideas <<
+¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+- add automatic camera range detection, right now it overrides with a default value
+    for all motions, which might be a problem for different scale motions
+- replace the DUMMY_MAX_INT with a way to find the max int that can be represented
+- add to the pose_animation function the ability to have a parents list for each
+    body pose motion, since right now it uses the same parents for all motions
+"""
 
 class AnimationMode(Enum):
     html = auto()
@@ -39,23 +47,23 @@ def pose_animation(motions_list:list,
 
 	---
 	### Args:
-        - motions_list (list): list of body keypoints positions that evolve with time. It must be a list
-            so if a single body motion is needed just put it in a list like [body_positions]. Where
-            body_position has a shape like (num_frames, num_keypoints, 3)
-        - parents (list): list of parents for the body keypoints, needed to link the keypoints with lines
-        - animation_framerate (float): the framerate at which the animation should be rendered
-        - animation_mode (AnimationMode): chose between matplotlib visualizer and html (the latter being
-            used in jupyter notebooks)
-        - gif_savepath (str): path where to save the plotlib animation as gif
-        - subplot_titles (list, optional): the titles for the subplots
-        - subplot_ids (list, optional): specify in order in which subplot to place the body motion 
-            sequences
-        - subplot_colors (list, optional): same as subplot_ids, but chose colors for body motions
-        - camera_orientations (list[CameraOrientation]): specify one CameraOrientation for all subplots
-            or specify an orientation for each subplot
-        - show_grid (bool): whether to show the plotlib grid or not
-        - show_keypoint_id (bool): whether to show the keypoint number adjacent to keypoint position in 3d
-        - fig_opts (dict, optional): figure options as argument for the plt.figure() method
+    - motions_list (list): list of body keypoints positions that evolve with time. It must be a list
+        so if a single body motion is needed just put it in a list like [body_positions]. Where
+        body_position has a shape like (num_frames, num_keypoints, 3)
+    - parents (list): list of parents for the body keypoints, needed to link the keypoints with lines
+    - animation_framerate (float): the framerate at which the animation should be rendered
+    - animation_mode (AnimationMode): chose between matplotlib visualizer and html (the latter being
+        used in jupyter notebooks)
+    - gif_savepath (str): path where to save the plotlib animation as gif
+    - subplot_titles (list, optional): the titles for the subplots
+    - subplot_ids (list, optional): specify in order in which subplot to place the body motion 
+        sequences
+    - subplot_colors (list, optional): same as subplot_ids, but chose colors for body motions
+    - camera_orientations (list[CameraOrientation]): specify one CameraOrientation for all subplots
+        or specify an orientation for each subplot
+    - show_grid (bool): whether to show the plotlib grid or not
+    - show_keypoint_id (bool): whether to show the keypoint number adjacent to keypoint position in 3d
+    - fig_opts (dict, optional): figure options as argument for the plt.figure() method
 
 	---
 	### Returns:
