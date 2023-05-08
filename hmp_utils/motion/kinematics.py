@@ -1,26 +1,23 @@
 import numpy as np
 from typing import Optional, Union
 from hmp_utils.motion.pose_conversions import aa2rotmat
-from hmp_utils.motion.body_model_data import SMPL_OFFSETS, SMPL_PARENTS, SMPL_NR_KEYPOINTS
-
-# body offsets represent the vector that starts at the root joint (pelvis) and
-# ends to a keypoint in the standard SMPL T-pose
 
 
-# ? NOTE: SPL: normalize so that right thigh has length 1
-
+"""
+Credits to [SPL paper](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
+"""
 
 class ForwardKinematics:
     """
     Forward kinematics for SMPL-like body pose.
-    
-    Inspiration credits to [SPL paper](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
     """
     def __init__(self, offsets:list, parents:list) -> None:
         """
         - number of keypoints:
             - defaults to the number of keypoints in SMPL (24)
             - it is the number of point positions that will be computed by the forward kinematics
+        - body offsets represent the vector that starts at the root joint (pelvis) and ends to a 
+            keypoint in the standard SMPL T-pose
         """
         
         if len(offsets) != len(parents):
@@ -34,6 +31,17 @@ class ForwardKinematics:
         offsets_ = np.array(offsets)
         self.body_links_offsets[1:] = offsets_[1:] - offsets_[parents[1:]]
         self.parents = parents
+    
+    def normalize_joints(self, reference_joint):
+        """
+        Select a joint which length should be used as reference to normalize all the other joints, 
+        so that the reference joint has length 1
+        """
+        # since the root joint was removed from the body links offsets
+        reference_joint = reference_joint - 1
+        
+        ref_joint_len = np.linalg.norm(self.body_links_offsets[reference_joint])
+        self.body_links_offsets = self.body_links_offsets / ref_joint_len
         
 
     def compute_fk(self, 
@@ -43,17 +51,19 @@ class ForwardKinematics:
                    joint_keyp_ids: Optional[Union[list, np.ndarray]] = None
                    ) -> np.ndarray:
         """
-        Compute forward kinematics for the object initialized with the body offsets (global or local positions).
-        It computes only local positions, meaning that the positions are referenced to the root keypoint.
+        Compute forward kinematics for the object initialized with the body offsets (global or local
+        positions). It computes only local positions, meaning that the positions are referenced to 
+        the root keypoint.
 
         ---
         ### Args:
         - joint_rots (list, ndarray): relative joint rotations in angle-axis representation.
             Shape (..., num_joints, 3)
         - apply_root_rotation (bool): if False, the root joint will not rotate with respect to world
-        - root_translation (): If root_translation is None, the keypoint positions are not rotat by a global transaltion. 
-            Otherwise, if a vector is given, all the joint positions will be translated by that amount. 
-            The translation is generally referred to the root joint (pelvis) translation with respect to world origin
+        - root_translation (): If root_translation is None, the keypoint positions are not rotat by 
+            a global transaltion. Otherwise, if a vector is given, all the joint positions will be 
+            translated by that amount. The translation is generally referred to the root joint (pelvis)
+            translation with respect to world origin
         - joint_keyp_ids (): used to index the joint rotations. If keypoint_ids is None, it is assumed that
         the given joint rotations are in ascending order starting from 0
 

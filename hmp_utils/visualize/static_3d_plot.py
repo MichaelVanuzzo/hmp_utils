@@ -58,6 +58,8 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     if num_independent_bodies == 1:
         parents_lst = [parents_lst]
         keypoint_pos_lst = [keypoint_pos_lst]
+        if keypoint_names is not None:
+            keypoint_names = [keypoint_names]
     elif num_independent_bodies < 1:
         raise Exception("num_independent_bodies must be >=1") 
 
@@ -80,7 +82,7 @@ def plot_body_keypoints(keypoint_pos_lst: list,
             # Plot the keypoint location
             keyp_name = ''
             if keypoint_names is not None:
-                keyp_name = f'{i}: {keypoint_names[i]}' if i < len(keypoint_names) else ''
+                keyp_name = f'{i}: {keypoint_names[pose_id][i]}' if i < len(keypoint_names[pose_id]) else ''
             
             ax.scatter(point[0], point[1], point[2], c=keypoint_color, marker=keypoint_marker,
                     label=keyp_name)
@@ -116,7 +118,7 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     if not show_grid:
         plt.axis('off')
     if keypoint_names is not None:
-        plt.legend()
+        plt.legend(loc='best')
     plt.show()
 
 
