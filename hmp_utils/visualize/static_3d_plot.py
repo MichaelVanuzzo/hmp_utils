@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 
 def plot_body_keypoints(keypoint_pos_lst: list,
-                        parents_lst: Optional[list],
+                        parents_lst: Optional[list]=None,
                         num_independent_bodies: int=1,
                         fig_opts=None,
                         keypoint_names:Optional[list]=None,
@@ -14,6 +14,7 @@ def plot_body_keypoints(keypoint_pos_lst: list,
                         show_grid: bool = False,
                         show_keypoint_id: bool = True,
                         keypoint_marker='o',
+                        image_margins_factor:float=0.9
                         ) -> None:
     """
     Scatter plot of body keypoints positions in 3d, connected if a parents list is provided
@@ -35,6 +36,7 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     - show_keypoint_id (bool, optional): whether to show keypoint ID. Defaults to True.
     - keypoint_marker (str, optional): type of marker for the keypoints. Defaults to 'o'.
     - keypoint_color (str, optional): color of the marker. Defaults to 'r'.
+    - image_margins_factor (float): by how much the margins shold be multiplied (<1 to shrink margins)
     """
 
     color_list = [
@@ -58,6 +60,8 @@ def plot_body_keypoints(keypoint_pos_lst: list,
         keypoint_pos_lst = [keypoint_pos_lst]
     elif num_independent_bodies < 1:
         raise Exception("num_independent_bodies must be >=1") 
+
+    plot_ranges_lst = []
 
     for pose_id, pose in enumerate(keypoint_pos_lst):
         
@@ -97,10 +101,14 @@ def plot_body_keypoints(keypoint_pos_lst: list,
                 ax.plot([point[0], parent_point[0]], [point[1], parent_point[1]],
                         [point[2], parent_point[2]], link_color + '-')
 
-        range_min, range_max = (np.min(pose), np.max(pose))
-        ax.axes.set_xlim3d(left=range_min, right=range_max) # type: ignore
-        ax.axes.set_ylim3d(bottom=range_min, top=range_max) # type: ignore
-        ax.axes.set_zlim3d(bottom=range_min, top=range_max) # type: ignore
+        plot_ranges_lst.append([(np.min(pose), np.max(pose))])
+    
+    plot_ranges_lst = np.array(plot_ranges_lst)*image_margins_factor
+    range_min, range_max = (np.min(plot_ranges_lst), np.max(plot_ranges_lst))
+    
+    ax.axes.set_xlim3d(left=range_min, right=range_max) # type: ignore
+    ax.axes.set_ylim3d(bottom=range_min, top=range_max) # type: ignore
+    ax.axes.set_zlim3d(bottom=range_min, top=range_max) # type: ignore
 
     # Set the camera angle
     ax.view_init(elev=elevation, azim=azimuth)
