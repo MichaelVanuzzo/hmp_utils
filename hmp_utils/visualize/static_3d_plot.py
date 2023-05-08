@@ -14,7 +14,6 @@ def plot_body_keypoints(keypoint_pos_lst: list,
                         show_grid: bool = False,
                         show_keypoint_id: bool = True,
                         keypoint_marker='o',
-                        keypoint_color='r'
                         ) -> None:
     """
     Scatter plot of body keypoints positions in 3d, connected if a parents list is provided
@@ -38,7 +37,15 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     - keypoint_color (str, optional): color of the marker. Defaults to 'r'.
     """
 
-    colors = ['b', 'r', 'g', 'm']
+    color_list = [
+    ('b', '#000080'),
+    ('g', '#006400'),
+    ('r', '#8B0000'),
+    ('c', '#008B8B'),
+    ('m', '#800080'),
+    ('y', '#808000'),
+    ('k', '#202020')
+]
 
     if fig_opts is None:
         fig_opts = {"figsize": (10, 10), "dpi": 80}
@@ -53,6 +60,10 @@ def plot_body_keypoints(keypoint_pos_lst: list,
         raise Exception("num_independent_bodies must be >=1") 
 
     for pose_id, pose in enumerate(keypoint_pos_lst):
+        
+        color_id = pose_id%len(color_list)
+        link_color, keypoint_color = color_list[color_id]
+        
         if parents_lst is not None:
             try:
                 parents = parents_lst[pose_id]
@@ -66,6 +77,7 @@ def plot_body_keypoints(keypoint_pos_lst: list,
             keyp_name = ''
             if keypoint_names is not None:
                 keyp_name = f'{i}: {keypoint_names[i]}' if i < len(keypoint_names) else ''
+            
             ax.scatter(point[0], point[1], point[2], c=keypoint_color, marker=keypoint_marker,
                     label=keyp_name)
 
@@ -83,7 +95,7 @@ def plot_body_keypoints(keypoint_pos_lst: list,
             # if it has a parent (not itself and not -1), connect it with a line
             if parent != i and parent != -1:
                 ax.plot([point[0], parent_point[0]], [point[1], parent_point[1]],
-                        [point[2], parent_point[2]], colors[pose_id] + '-')
+                        [point[2], parent_point[2]], link_color + '-')
 
         range_min, range_max = (np.min(pose), np.max(pose))
         ax.axes.set_xlim3d(left=range_min, right=range_max) # type: ignore
