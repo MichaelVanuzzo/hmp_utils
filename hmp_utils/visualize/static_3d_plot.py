@@ -24,7 +24,8 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     - keypoints_pos_lst (list): list of keypoint positions of shape (num_keypoints, 3), or a list of 
         indipendent poses
     - parents_lst (list, optional): list of parents, in order to draw connecting links, same as 
-        keypoint_pos_lst
+        keypoint_pos_lst. If parents list does not contain a parent for each independent body, 
+        those missing parents are set to None
     - num_independent_bodies: whether the positions belong to the same body or multiple bodies to plot
         in the same space
     - fig_opts (dict()): options for the pyplot.figure() call
@@ -46,13 +47,20 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     ax = fig.add_subplot(111, projection='3d')
 
     if num_independent_bodies == 1:
-        keypoint_pos_lst = [keypoint_pos_lst]
         parents_lst = [parents_lst]
+        keypoint_pos_lst = [keypoint_pos_lst]
     elif num_independent_bodies < 1:
         raise Exception("num_independent_bodies must be >=1") 
 
     for pose_id, pose in enumerate(keypoint_pos_lst):
-        parents  = parents_lst[pose_id]
+        if parents_lst is not None:
+            try:
+                parents = parents_lst[pose_id]
+            except IndexError:
+                parents = None
+        else:
+            parents = None
+            
         for i, point in enumerate(pose):
             # Plot the keypoint location
             keyp_name = ''
@@ -98,10 +106,10 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     """
 
     def plot_body_keypoints_(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
-        return plot_body_keypoints(pose=frame_joint_pos, parents=parents, fig_opts=fig_opts,
-                                   elevation=elevation_slider, azimuth=azimuth_slider,
-                                   show_grid=view_axis_slider, show_keypoint_id=view_joint_slider,
-                                   **kwargs)
+        return plot_body_keypoints(keypoint_pos_lst=frame_joint_pos, parents_lst=parents, 
+                                   fig_opts=fig_opts, elevation=elevation_slider, 
+                                   azimuth=azimuth_slider, show_grid=view_axis_slider, 
+                                   show_keypoint_id=view_joint_slider, **kwargs)
 
     # Create the sliders and display them
     elevation_slider = widgets.FloatSlider(min=-90, max=90, value=20, description='Elevation')
