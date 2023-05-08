@@ -1,11 +1,12 @@
 import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
-from typing import Optional
+from typing import Optional, Union
 
 
-def plot_body_keypoints(keypoints_pos: list,
-                        parents: Optional[list],
+def plot_body_keypoints(keypoint_pos_lst: list,
+                        parents_lst: Optional[list],
+                        num_independent_bodies: int=1,
                         fig_opts=None,
                         keypoint_names:Optional[list]=None,
                         elevation=20,
@@ -20,8 +21,12 @@ def plot_body_keypoints(keypoints_pos: list,
 
     ---
     ### Args:
-    - keypoints_pos (list): list of keypoint positions of shape (num_keypoints, 3)
-    - parents (list, optional): list of parents, in order to draw connecting links
+    - keypoints_pos_lst (list): list of keypoint positions of shape (num_keypoints, 3), or a list of 
+        indipendent poses
+    - parents_lst (list, optional): list of parents, in order to draw connecting links, same as 
+        keypoint_pos_lst
+    - num_independent_bodies: whether the positions belong to the same body or multiple bodies to plot
+        in the same space
     - fig_opts (dict()): options for the pyplot.figure() call
     - keypoint_names (list, optional): list of keypoint names to print
     - elevation (int, optional): elevation angle of camera view. Defaults to 20.
@@ -32,40 +37,50 @@ def plot_body_keypoints(keypoints_pos: list,
     - keypoint_color (str, optional): color of the marker. Defaults to 'r'.
     """
 
+    colors = ['b', 'r', 'g', 'm']
+
     if fig_opts is None:
         fig_opts = {"figsize": (10, 10), "dpi": 80}
 
     fig = plt.figure(**fig_opts)
     ax = fig.add_subplot(111, projection='3d')
 
-    for i, point in enumerate(keypoints_pos):
-        # Plot the keypoint location
-        keyp_name = ''
-        if keypoint_names is not None:
-            keyp_name = f'{i}: {keypoint_names[i]}' if i < len(keypoint_names) else ''
-        ax.scatter(point[0], point[1], point[2], c=keypoint_color, marker=keypoint_marker,
-                   label=keyp_name)
+    if num_independent_bodies == 1:
+        keypoint_pos_lst = [keypoint_pos_lst]
+        parents_lst = [parents_lst]
+    elif num_independent_bodies < 1:
+        raise Exception("num_independent_bodies must be >=1") 
 
-        # Keypoint label
-        if show_keypoint_id:
-            ax.text(point[0], point[1], point[2], f'{i}', fontsize=10)
+    for pose_id, pose in enumerate(keypoint_pos_lst):
+        parents  = parents_lst[pose_id]
+        for i, point in enumerate(pose):
+            # Plot the keypoint location
+            keyp_name = ''
+            if keypoint_names is not None:
+                keyp_name = f'{i}: {keypoint_names[i]}' if i < len(keypoint_names) else ''
+            ax.scatter(point[0], point[1], point[2], c=keypoint_color, marker=keypoint_marker,
+                    label=keyp_name)
 
-        # Draw body links if parents are specified
-        if parents is None:
-            continue
+            # Keypoint label
+            if show_keypoint_id:
+                ax.text(point[0], point[1], point[2], f'{i}', fontsize=10)
 
-        parent = parents[i]
-        parent_point = keypoints_pos[parent]
+            # Draw body links if parents are specified
+            if parents is None:
+                continue
 
-        # if it has a parent (not itself and not -1), connect it with a line
-        if parent != i and parent != -1:
-            ax.plot([point[0], parent_point[0]], [point[1], parent_point[1]],
-                    [point[2], parent_point[2]], 'b-')
+            parent = parents[i]
+            parent_point = pose[parent]
 
-    range_min, range_max = (np.min(keypoints_pos), np.max(keypoints_pos))
-    ax.axes.set_xlim3d(left=range_min, right=range_max) # type: ignore
-    ax.axes.set_ylim3d(bottom=range_min, top=range_max) # type: ignore
-    ax.axes.set_zlim3d(bottom=range_min, top=range_max) # type: ignore
+            # if it has a parent (not itself and not -1), connect it with a line
+            if parent != i and parent != -1:
+                ax.plot([point[0], parent_point[0]], [point[1], parent_point[1]],
+                        [point[2], parent_point[2]], colors[pose_id] + '-')
+
+        range_min, range_max = (np.min(pose), np.max(pose))
+        ax.axes.set_xlim3d(left=range_min, right=range_max) # type: ignore
+        ax.axes.set_ylim3d(bottom=range_min, top=range_max) # type: ignore
+        ax.axes.set_zlim3d(bottom=range_min, top=range_max) # type: ignore
 
     # Set the camera angle
     ax.view_init(elev=elevation, azim=azimuth)
@@ -83,7 +98,7 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     """
 
     def plot_body_keypoints_(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
-        return plot_body_keypoints(keypoints_pos=frame_joint_pos, parents=parents, fig_opts=fig_opts,
+        return plot_body_keypoints(pose=frame_joint_pos, parents=parents, fig_opts=fig_opts,
                                    elevation=elevation_slider, azimuth=azimuth_slider,
                                    show_grid=view_axis_slider, show_keypoint_id=view_joint_slider,
                                    **kwargs)
