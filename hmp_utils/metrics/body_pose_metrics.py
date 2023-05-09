@@ -212,11 +212,15 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
     
     # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
     # the predicted and target orientations
+    """
     angles = []
     for i in range(rot_diff.shape[0]):
         # aa, _ = cv2.Rodrigues(rot_diff[i])
         aa = rotmat2aa(rot_diff[i])
         angles.append(np.linalg.norm(aa))
+    """
+    aa = rotmat2aa(rot_diff)
+    angles = np.linalg.norm(aa, axis=1)
         
     angles = np.array(angles)
     angles = np.reshape(angles, return_shape)

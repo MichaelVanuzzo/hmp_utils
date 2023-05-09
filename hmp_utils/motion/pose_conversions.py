@@ -53,7 +53,7 @@ def rotmat2aa(array: np.ndarray) -> np.ndarray:
     return_shape = array.shape[:-1]
 
     # isolate single rotations for conversion
-    array = np.reshape(array, (-1, 3))
+    array = np.reshape(array, (-1, 3, 3))
     rotation = Rotation.from_matrix(array)  # type: ignore
     aa = rotation.as_rotvec()
 
