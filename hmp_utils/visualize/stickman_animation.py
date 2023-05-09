@@ -11,6 +11,7 @@ from matplotlib.animation import FuncAnimation
 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 - add automatic camera range detection, right now it overrides with a default value
     for all motions, which might be a problem for different scale motions
+- add automatic colors when multiple bodies are visualized in the same subplot
 - replace the DUMMY_MAX_INT with a way to find the max int that can be represented
 - add to the pose_animation function the ability to have a parents list for each
     body pose motion, since right now it uses the same parents for all motions
