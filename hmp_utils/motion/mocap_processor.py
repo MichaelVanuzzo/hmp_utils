@@ -65,8 +65,7 @@ def downsample_motion(source_array: np.ndarray, source_framerate: float,
         source_num_frames = source_array.shape[0]
         downsampled_len_frames = int(source_num_frames*target_framerate/source_framerate)
 
-        downsampled_array = signal.resample_poly(
-            source_array, downsampled_len_frames, source_num_frames)
+        downsampled_array = signal.resample_poly(source_array, downsampled_len_frames, source_num_frames)
         return np.array(downsampled_array)
 
     elif method == DownsampleMethod.slerp:
@@ -78,9 +77,16 @@ def downsample_motion(source_array: np.ndarray, source_framerate: float,
         # compute at which times the sampling should occur
         original_shape = source_array.shape
         original_len_frames = original_shape[0]
+        # this is not the actual duration of the sequence, but the last frame sample time
         original_len_sec = original_len_frames/source_framerate
+        
         original_key_times = np.arange(start=0, stop=original_len_sec, step=1/source_framerate)
+        original_key_times = original_key_times[:original_len_frames]
         target_times = np.arange(start=0, stop=original_len_sec, step=1/target_framerate)
+        
+        # remove the last frame if it exceeds the time of the last frame in the key times
+        target_times = target_times[target_times < original_key_times[-1]]
+        
         # the shape is (num_frames, ..., 3) but we need (..., num_frames, 3)
         source_array = np.swapaxes(source_array, 0, -2)
         # reshape to process single rotation vectors
