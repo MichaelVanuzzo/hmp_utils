@@ -1,3 +1,4 @@
+# ---------------SMPL---------------
 # Keypoints are all the joints and end effectors combined
 SMPL_NR_KEYPOINTS = 24
 SMPL_KEYPOINTS = [i for i in range(SMPL_NR_KEYPOINTS)]
@@ -168,3 +169,21 @@ SMPL_OFFSETS = {
         [ 7.31773168e-01,  2.05445019e-01, -5.30577698e-02],
         [-7.35578759e-01,  2.05180646e-01, -5.39352281e-02]]
 }
+
+# --------------Human3.6m---------------
+# from (https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L25)
+
+H36M_NR_JOINTS = 32
+
+H36M_PARENTS = [-1, 0, 1, 2, 3, 4, 0, 6, 7, 8, 9, 0, 11, 12, 13, 14, 12,
+                16, 17, 18, 19, 20, 19, 22, 12, 24, 25, 26, 27, 28, 27, 30]
+
+H36M_MAJOR_JOINTS = [0, 1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 24, 25, 26, 27]
+
+H36M_JOINTS_TO_IGNORE = [5, 10, 15, 20, 21, 22, 23, 28, 29, 30, 31]
+
+# Joint Names According to (https://github.com/wei-mao-2019/HisRepItself/blob/master/utils/h36motion3d.py#L42)
+H36M_JOINT_NAMES = ["Hips", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase", "Site", "LeftUpLeg", "LeftLeg","LeftFoot",
+               "LeftToeBase", "Site", "Spine", "Spine1", "Neck", "Head", "Site", "LeftShoulder", "LeftArm","LeftForeArm",
+               "LeftHand", "LeftHandThumb", "Site", "L_Wrist_End", "Site", "RightShoulder", "RightArm","RightForeArm",
+               "RightHand", "RightHandThumb", "Site", "R_Wrist_End", "Site"]
