@@ -2,6 +2,7 @@ import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from typing import Optional, Union
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def plot_body_keypoints(keypoint_pos_lst: list,
