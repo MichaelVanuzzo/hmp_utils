@@ -11,7 +11,8 @@ class ForwardKinematics:
     """
     Forward kinematics for SMPL-like body pose.
     """
-    def __init__(self, offsets:list, parents:list) -> None:
+    def __init__(self, offsets:list, parents:list,
+                 offsets_are_relative:bool=False) -> None:
         """
         - number of keypoints:
             - defaults to the number of keypoints in SMPL (24)
@@ -29,7 +30,10 @@ class ForwardKinematics:
         self.body_links_offsets[0] = offsets[0]
         # compute the vectors that connect a body keypoint to its parent (not needed for the root joint)
         offsets_ = np.array(offsets)
-        self.body_links_offsets[1:] = offsets_[1:] - offsets_[parents[1:]]
+        if not offsets_are_relative:
+            self.body_links_offsets[1:] = offsets_[1:] - offsets_[parents[1:]]
+        else:
+            self.body_links_offsets = offsets_
         self.parents = parents
     
     def normalize_joints(self, reference_joint):
