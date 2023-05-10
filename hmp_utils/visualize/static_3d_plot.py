@@ -14,7 +14,8 @@ def plot_body_keypoints(keypoint_pos_lst: list,
                         show_grid: bool = False,
                         show_keypoint_id: bool = True,
                         keypoint_marker='o',
-                        image_margins_factor:float=0.9
+                        image_margins_factor:float=0.9,
+                        legend_location:Optional[str]=None
                         ) -> None:
     """
     Scatter plot of body keypoints positions in 3d, connected if a parents list is provided
@@ -118,7 +119,10 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     if not show_grid:
         plt.axis('off')
     if keypoint_names is not None:
-        plt.legend(loc='best')
+        if legend_location is not None:
+            plt.legend(loc=legend_location)
+        else:
+            plt.legend(loc='best')
     plt.show()
 
 
