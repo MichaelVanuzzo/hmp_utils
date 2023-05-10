@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from typing import Optional, Union
 from IPython.display import display, HTML
 from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 
 """
 >> Future Developement Ideas <<
