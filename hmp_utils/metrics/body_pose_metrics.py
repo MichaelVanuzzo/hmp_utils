@@ -190,7 +190,7 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
         raise NotImplementedError
 
     # Check shape
-    if predictions.shape[-1] != targets.shape[-1] == 3:
+    if not predictions.shape[-1] == targets.shape[-1] == 3:
         raise Exception('predictions and targets have to be in angle-axis representation with 3 '
                         'components (3d vector which mangitude is the rotation angle)')
     if predictions.shape != targets.shape:
@@ -212,13 +212,6 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
     
     # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
     # the predicted and target orientations
-    """
-    angles = []
-    for i in range(rot_diff.shape[0]):
-        # aa, _ = cv2.Rodrigues(rot_diff[i])
-        aa = rotmat2aa(rot_diff[i])
-        angles.append(np.linalg.norm(aa))
-    """
     aa = rotmat2aa(rot_diff)
     angles = np.linalg.norm(aa, axis=1)
         
@@ -233,7 +226,7 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
 
 
 def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints:list,
-                     offsets, parents):
+                     offsets, parents, keypoints_mean:bool) -> np.ndarray:
     """
     Given the angle-axis representation of the joints, compute the forward kinematics on the
     skeleton and caculate the euclidean distance between each joint (among the joints selected
@@ -244,6 +237,14 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
     ---
     ### Args:
     - predictions (ndarray): array of predicted joint relative angles in the angle-axis representation
+        with shape (batch_size, num_frames, num_keypoints, 3)
+    - targets (ndarray): same shape of predictions
+    - keypoints_mean (bool): whether to return the distances averaged over the keypoints
+    
+    ---
+    ### Return:
+    The euclidean distances between predictions and targets. Rerturn shape: (batch_size, num_frames, num_keypoints) or 
+        (batch_size, num_frames) if keypoints_mean is true
     """
     
     # convert angles into positions
@@ -251,5 +252,15 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
     predictions_pos = kine.compute_fk(predictions)
     targets_pos = kine.compute_fk(targets)
 
+    print('targets_pos', targets_pos.shape)
+    
     # return the euclidean distance between the joint positions
-    return np.sqrt(np.sum((predictions_pos - targets_pos) ** 2, axis=-1))
+    distances = np.linalg.norm((predictions_pos[:, :, select_joints] - targets_pos[:, :, select_joints]), axis=-1)
+    
+    print('distances', distances.shape)
+    
+    if keypoints_mean:
+        return np.mean(distances, axis=-1)
+    else:
+        return distances
+    
