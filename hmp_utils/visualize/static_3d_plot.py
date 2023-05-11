@@ -139,8 +139,8 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
                                    show_keypoint_id=view_joint_slider, **kwargs)
 
     # Create the sliders and display them
-    elevation_slider = widgets.FloatSlider(min=-90, max=90, value=20, description='Elevation')
-    azimuth_slider = widgets.FloatSlider(min=-180, max=180, value=100, description='Azimuth')
+    elevation_slider = widgets.FloatSlider(min=-360, max=360, value=20, description='Elevation')
+    azimuth_slider = widgets.FloatSlider(min=-360, max=360, value=100, description='Azimuth')
     view_axis_slider = widgets.IntSlider(min=0, max=1, value=1, description='Axis grids')
     view_joint_slider = widgets.IntSlider(min=0, max=1, value=1, description='Joint IDs')
 
