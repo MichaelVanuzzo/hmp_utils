@@ -12,7 +12,8 @@ class ForwardKinematics:
     Forward kinematics for SMPL-like body pose.
     """
     def __init__(self, offsets:list, parents:list,
-                 offsets_are_relative:bool=False) -> None:
+                 offsets_are_relative:bool=False,
+                 left_mul:bool=False) -> None:
         """
         - number of keypoints:
             - defaults to the number of keypoints in SMPL (24)
@@ -35,6 +36,7 @@ class ForwardKinematics:
         else:
             self.body_links_offsets = offsets_
         self.parents = parents
+        self.left_mul = left_mul
     
     def normalize_joints(self, reference_joint):
         """
@@ -125,8 +127,24 @@ class ForwardKinematics:
                 parent_transform = transform_chain[parent_idx]
                 
                 # Compute the world transformation matrix for the current keypoint
-                curr_transform_world = np.matmul(parent_transform, pose_transf_mats[keyp_idx])
-                
+                if self.left_mul:
+                    # For Human3.6M
+                    offset = pose_transf_mats[keyp_idx, :3, 3]
+                    rel_angle = pose_transf_mats[keyp_idx, :3, :3]
+                    parent_rotation = parent_transform[:3, :3]
+                    parent_position = parent_transform[:3, 3]
+
+                    # global position of this keypoint
+                    this_position = np.matmul(offset, parent_rotation) + parent_position
+                    this_rotation = np.matmul(rel_angle, parent_rotation)
+                    
+                    curr_transform_world = np.eye(4)
+                    curr_transform_world[:3, :3] = this_rotation
+                    curr_transform_world[:3, 3] = this_position
+                else:
+                    # For AMASS
+                    curr_transform_world = np.matmul(parent_transform, pose_transf_mats[keyp_idx])
+                    
                 # Store the world transformation matrix of the current joint
                 transform_chain[keyp_idx] = curr_transform_world
             
