@@ -20,6 +20,17 @@ class ForwardKinematics:
             - it is the number of point positions that will be computed by the forward kinematics
         - body offsets represent the vector that starts at the root joint (pelvis) and ends to a 
             keypoint in the standard SMPL T-pose
+            
+        ---
+        ### Args:
+        - offsets (list):
+        - parents (list):
+        - offsets_are_relative (bool): whether the given keypoints position offsets are absolute
+            (an array of absolute positions of the body keypoints like AMASS), or relative like
+            Human3.6M where the list contains vectors that displace the position of the keypoint
+            in relation to the position of the parent keypoint
+        - left_mul (bool): whether to concatenate rotations like R3*R2*R1 (AMASS way) or vice versa
+            (Human3.6M way)
         """
         
         if len(offsets) != len(parents):
