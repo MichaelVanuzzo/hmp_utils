@@ -226,7 +226,8 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
 
 
 def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints:list,
-                     offsets, parents, keypoints_mean:bool) -> np.ndarray:
+                     offsets:list, parents:list, keypoints_mean:bool,
+                     offsets_are_relative:bool=False, left_mul:bool=False) -> np.ndarray:
     """
     Given the angle-axis representation of the joints, compute the forward kinematics on the
     skeleton and caculate the euclidean distance between each joint (among the joints selected
@@ -248,7 +249,7 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
     """
     
     # convert angles into positions
-    kine = ForwardKinematics(offsets, parents)
+    kine = ForwardKinematics(offsets, parents, offsets_are_relative=offsets_are_relative,left_mul=left_mul)
     predictions_pos = kine.compute_fk(predictions)
     targets_pos = kine.compute_fk(targets)
 
