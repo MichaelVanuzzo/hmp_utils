@@ -252,14 +252,10 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
     kine = ForwardKinematics(offsets, parents, offsets_are_relative=offsets_are_relative,left_mul=left_mul)
     predictions_pos = kine.compute_fk(predictions)
     targets_pos = kine.compute_fk(targets)
-
-    print('targets_pos', targets_pos.shape)
     
     # return the euclidean distance between the joint positions
     distances = np.linalg.norm((predictions_pos[:, :, select_joints] - targets_pos[:, :, select_joints]), axis=-1)
-    
-    print('distances', distances.shape)
-    
+        
     if keypoints_mean:
         return np.mean(distances, axis=-1)
     else:
