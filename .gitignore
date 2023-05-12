@@ -1,6 +1,7 @@
 # Folders
 build
+dist
 hmp_utils.egg-info
 __pycache__
-.vscode
 .ipynb_checkpoints
+.vscode

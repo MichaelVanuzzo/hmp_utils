@@ -226,8 +226,10 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
 
 
 def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints:list,
-                     offsets, parents, keypoints_mean:bool,
-                     joint_to_normalize:Optional[int]=None) -> np.ndarray:
+                     offsets:list, parents:list, keypoints_mean:bool,
+                     offsets_are_relative:bool=False, left_mul:bool=False,
+                     joint_to_normalize:Optional[int]=None
+                     ) -> np.ndarray:
     """
     Given the angle-axis representation of the joints, compute the forward kinematics on the
     skeleton and caculate the euclidean distance between each joint (among the joints selected
@@ -251,21 +253,17 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
     """
     
     # convert angles into positions
-    kine = ForwardKinematics(offsets, parents)
+    kine = ForwardKinematics(offsets, parents, offsets_are_relative=offsets_are_relative,left_mul=left_mul)
     
     if joint_to_normalize is not None:
         kine.normalize_joints(reference_joint=joint_to_normalize)
     
     predictions_pos = kine.compute_fk(predictions)
     targets_pos = kine.compute_fk(targets)
-
-    print('targets_pos', targets_pos.shape)
     
     # return the euclidean distance between the joint positions
     distances = np.linalg.norm((predictions_pos[:, :, select_joints] - targets_pos[:, :, select_joints]), axis=-1)
-    
-    print('distances', distances.shape)
-    
+        
     if keypoints_mean:
         return np.mean(distances, axis=-1)
     else:
