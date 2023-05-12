@@ -1,14 +1,14 @@
 import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
-from typing import Optional, Union
+from typing import Optional
 from mpl_toolkits.mplot3d import Axes3D
 
 
 def plot_body_keypoints(keypoint_pos_lst: list,
                         parents_lst: Optional[list]=None,
                         num_independent_bodies: int=1,
-                        fig_opts=None,
+                        fig_opts:Optional[dict]=None,
                         keypoint_names:Optional[list]=None,
                         elevation=20,
                         azimuth=100,
@@ -37,10 +37,11 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     - show_grid (bool, optional): whether to show grid. Defaults to False.
     - show_keypoint_id (bool, optional): whether to show keypoint ID. Defaults to True.
     - keypoint_marker (str, optional): type of marker for the keypoints. Defaults to 'o'.
-    - keypoint_color (str, optional): color of the marker. Defaults to 'r'.
     - image_margins_factor (float): by how much the margins shold be multiplied (<1 to shrink margins)
+    - legend_location (str, optional): location of the plot legened
     """
 
+    # left color = lines; right color = markers (same as lines but darker)
     color_list = [
     ('b', '#000080'),
     ('g', '#006400'),
