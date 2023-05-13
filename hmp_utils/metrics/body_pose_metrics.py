@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Union, Optional
 
-from hmp_utils.motion.pose_conversions import aa2euler, aa2rotmat, rotmat2aa, DEFAULT_EULER_SEQ
+from .. import RotConvert, DEFAULT_EULER_SEQ
 from hmp_utils.motion.kinematics import ForwardKinematics
 
 """
@@ -14,7 +14,6 @@ from hmp_utils.motion.kinematics import ForwardKinematics
     So if prediction has shape (..., frames, 10, 3) and joints_to_metric = [1, 2, 4] then the joints with those
     indexes in the predictions and targets tensors will be used to compute the error.
 """
-
 
 class MetricsProcessor:
     """
@@ -127,8 +126,8 @@ def euler_error(predictions: np.ndarray, targets: np.ndarray, euler_seq: Optiona
     # convert into Euler representation
     if euler_seq is None:
         euler_seq = DEFAULT_EULER_SEQ
-    euler_preds = aa2euler(predictions, euler_seq)
-    euler_targs = aa2euler(targets, euler_seq)
+    euler_preds = RotConvert.aa2euler(predictions, euler_seq)
+    euler_targs = RotConvert.aa2euler(targets, euler_seq)
 
     # reshape to (-1, n_joints*3) to be consistent with previous work
     euler_preds = np.reshape(euler_preds, [-1, n_joints*3])
@@ -199,8 +198,8 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
     # save the first part of the shape in order to return (..., ) or (..., nun_joints)
     return_shape = targets.shape[:-1]
     
-    predictions_rotmat = aa2rotmat(predictions)
-    targets_rotmat = aa2rotmat(targets)
+    predictions_rotmat = RotConvert.aa2rotmat(predictions)
+    targets_rotmat = RotConvert.aa2rotmat(targets)
     
     predictions_rotmat = np.reshape(predictions_rotmat, (-1, 3, 3))
     targets_rotmat = np.reshape(targets_rotmat, (-1, 3, 3))
@@ -212,7 +211,7 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
     
     # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
     # the predicted and target orientations
-    aa = rotmat2aa(rot_diff)
+    aa = RotConvert.rotmat2aa(rot_diff)
     angles = np.linalg.norm(aa, axis=1)
         
     angles = np.array(angles)
