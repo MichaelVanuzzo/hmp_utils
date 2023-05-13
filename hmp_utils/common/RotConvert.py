@@ -5,6 +5,7 @@ DEFAULT_EULER_SEQ = 'zxy'
 
 class RotConvert:
     
+    @staticmethod
     def rotmat2euler(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
         """
         Convert rotation matrix representation into Euler angle, with selected Euler sequence
@@ -26,7 +27,7 @@ class RotConvert:
         # restore original shape
         return np.reshape(euler_seq, orig_shape)
 
-
+    @staticmethod
     def aa2euler(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
         """
         Convert angle-axis representation into Euler angle, with selected Euler sequence
@@ -47,8 +48,7 @@ class RotConvert:
 
         # restore original shape
         return np.reshape(euler_seq, orig_shape)
-
-
+    @staticmethod
     def euler2aa(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
         """
         Convert Euler angle representation into angle-axis, with selected Euler sequence
@@ -69,8 +69,7 @@ class RotConvert:
 
         # restore original shape
         return np.reshape(aa_seq, orig_shape)
-
-
+    @staticmethod
     def aa2rotmat(input_seq) -> np.ndarray:
         """
         Convert angle-axis representation into rotation matrix,
@@ -90,8 +89,7 @@ class RotConvert:
 
         # restore original shape
         return np.reshape(rotmat_seq, return_shape)
-
-
+    @staticmethod
     def rotmat2aa(input_seq) -> np.ndarray:
         """
         Convert rotation matri representation into angle-axis,
