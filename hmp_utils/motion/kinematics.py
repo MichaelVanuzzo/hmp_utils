@@ -1,4 +1,5 @@
 import numpy as np
+from enum import Enum, auto
 from typing import Optional, Union
 from hmp_utils.motion.pose_conversions import aa2rotmat
 
@@ -6,6 +7,10 @@ from hmp_utils.motion.pose_conversions import aa2rotmat
 """
 Credits to [SPL paper](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
 """
+
+class fk_return(Enum):
+    positions = auto()
+    rotations = auto()
 
 class ForwardKinematics:
     """
@@ -65,7 +70,8 @@ class ForwardKinematics:
                    joint_rots:Union[list, np.ndarray], 
                    apply_root_rotation:bool = False,
                    root_translation: Optional[Union[list, np.ndarray]] = None,
-                   joint_keyp_ids: Optional[Union[list, np.ndarray]] = None
+                   joint_keyp_ids: Optional[Union[list, np.ndarray]] = None,
+                   return_type: fk_return=fk_return.positions
                    ) -> np.ndarray:
         """
         Compute forward kinematics for the object initialized with the body offsets (global or local
@@ -82,13 +88,14 @@ class ForwardKinematics:
             translated by that amount. The translation is generally referred to the root joint (pelvis)
             translation with respect to world origin
         - joint_keyp_ids (): used to index the joint rotations. If keypoint_ids is None, it is assumed that
-        the given joint rotations are in ascending order starting from 0
+            the given joint rotations are in ascending order starting from 0
+        - return_type (bool): return keypoints positions by default. If rotations is chose, then rotation
+            matrices representing keypoint global orientations are returned
 
         ---
         ### Returns:
-        A numpy array containing the computed keypoint positions.
+        A numpy array containing the computed keypoint positions or rotations matrices.
         """
-        
         
         joint_rots_arr:np.ndarray = np.array(joint_rots)
         orig_shape = joint_rots_arr.shape
@@ -96,10 +103,17 @@ class ForwardKinematics:
         if joint_keyp_ids is None:
             joint_keyp_ids = np.arange(len(joint_rots_arr))
         
-        # return: (..., num_keypoints, 3)
+        # return 3d points or 3x3 rotmats
         N = orig_shape[:-2]
-        return_shape = (*N, self.num_keypoints, 3)
-            
+        if return_type == fk_return.positions:
+            # return 3d positions
+            return_shape = (*N, self.num_keypoints, 3)
+        elif fk_return.positions:
+            # return rotation matrices
+            return_shape = (*N, self.num_keypoints, 3, 3)
+        else:
+            raise NotImplementedError
+
         # the keypoints that do not represent joints are zeros, while the ones that represent joints
         # are filled with the joint rotations
         keyp_rotations = np.zeros((*N, self.num_keypoints, 3))
@@ -122,8 +136,8 @@ class ForwardKinematics:
         # rotation matrices
         transf_mats[:, :, :3, :3] = keyp_rotmats
         
-        # prepare return array with shape: (N, num_keypoints, 3)
-        keyp_positions = np.zeros((*transf_mats.shape[:2], 3))
+        # save forward kinematics results
+        global_transf_mats = np.zeros(transf_mats.shape)
         
         # get the keypoint position for each pose (that is constituted by num_keyponts transformation
         # matrices)
@@ -159,14 +173,27 @@ class ForwardKinematics:
                 # Store the world transformation matrix of the current joint
                 transform_chain[keyp_idx] = curr_transform_world
             
+            # save transform_chain, which has shape: (num_keypoints, 4, 4)
+            global_transf_mats[pose_idx] = transform_chain
+        
+        # RESTITUIRE O LE POSIZIONI O LE MAT DI ROTAZIONE
+        if return_type == fk_return.positions:
             # The last column of the transformations contains keypoints positions
-            # transform_chain shape: (num_keypoints, 4, 4)
-            keyp_positions[pose_idx] = transform_chain[:, :3, 3]
+            keyp_positions = global_transf_mats[:, :, :3, 3]
+            keyp_positions = np.reshape(keyp_positions, return_shape)
+            # apply root joint translation by translation of every point
+            if root_translation is not None:
+                root_translation = np.array(root_translation)
+                keyp_positions = keyp_positions + root_translation
+            return keyp_positions
         
-        # apply root joint translation by translation of every point
-        if root_translation is not None:
-            root_translation = np.array(root_translation)
-            keyp_positions = keyp_positions + root_translation
+        elif return_type == fk_return.rotations:
+            # the north-west 3x3 matrix in the transformation matrix contains global rotations
+            keyp_glob_rotations = global_transf_mats[:, :, :3, :3]
+            keyp_glob_rotations = np.reshape(keyp_glob_rotations, return_shape)
+            return keyp_glob_rotations
         
-        return np.reshape(keyp_positions, return_shape)
-        
+        else:
+            raise NotImplementedError
+            
+            

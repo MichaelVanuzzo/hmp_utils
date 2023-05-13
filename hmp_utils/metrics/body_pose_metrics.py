@@ -158,7 +158,7 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
     Expects the predictions and targets to be in angle-axis representation, as tensors of 
     shape (..., num_joints, 3)
     
-    Credits to: SPL https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py
+    Credits to: [SPL](https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py)
     
     ---
     ### Args:
@@ -268,4 +268,3 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
         return np.mean(distances, axis=-1)
     else:
         return distances
-    

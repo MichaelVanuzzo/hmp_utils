@@ -19,7 +19,7 @@ def rotmat2euler(array, to_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
 
     # isolate single rotation vectors in order to convert them
     array = np.reshape(array, (-1, 3, 3))
-    rotation = Rotation.from_matrix(array)
+    rotation = Rotation.from_matrix(array) # type:ignore
     euler_rot = rotation.as_euler(seq=to_seq)
 
     # restore original shape
@@ -40,7 +40,7 @@ def aa2euler(array, to_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
 
     # isolate single rotation vectors in order to convert them
     array = np.reshape(array, (-1, 3))
-    rotation = Rotation.from_rotvec(array)
+    rotation = Rotation.from_rotvec(array) # type:ignore
     euler_rot = rotation.as_euler(seq=to_seq)
 
     # restore original shape
@@ -61,7 +61,7 @@ def euler2aa(array, from_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
 
     # isolate single rotation vectors in order to convert them
     array = np.reshape(array, (-1, 3))
-    rotation = Rotation.from_euler(from_seq, array) 
+    rotation = Rotation.from_euler(from_seq, array) # type:ignore
     aa_rot = rotation.as_rotvec()
     
     # restore original shape
@@ -81,7 +81,7 @@ def aa2rotmat(array) -> np.ndarray:
 
     # isolate single rotations for conversion
     array = np.reshape(array, (-1, 3))
-    rotation = Rotation.from_rotvec(array)  
+    rotation = Rotation.from_rotvec(array) # type:ignore
     rotmat = rotation.as_matrix()
 
     # restore original shape
@@ -101,7 +101,7 @@ def rotmat2aa(array) -> np.ndarray:
 
     # isolate single rotations for conversion
     array = np.reshape(array, (-1, 3, 3))
-    rotation = Rotation.from_matrix(array) 
+    rotation = Rotation.from_matrix(array) # type:ignore
     aa = rotation.as_rotvec()
 
     # restore original shape
