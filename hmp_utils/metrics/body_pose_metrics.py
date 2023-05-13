@@ -15,7 +15,6 @@ from hmp_utils.motion.kinematics import ForwardKinematics
     indexes in the predictions and targets tensors will be used to compute the error.
 """
 
-
 class MetricsProcessor:
     """
     Some of the metrics were inspired by [SPL - Structured Prediction Layer Helps 3D Human Motion \
@@ -158,7 +157,7 @@ def joint_angle_diff(predictions: np.ndarray, targets: np.ndarray, joints_to_met
     Expects the predictions and targets to be in angle-axis representation, as tensors of 
     shape (..., num_joints, 3)
     
-    Credits to: SPL https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py
+    Credits to: [SPL](https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py)
     
     ---
     ### Args:
@@ -268,4 +267,3 @@ def positional_error(predictions: np.ndarray, targets: np.ndarray, select_joints
         return np.mean(distances, axis=-1)
     else:
         return distances
-    

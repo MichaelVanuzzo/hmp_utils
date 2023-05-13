@@ -5,6 +5,7 @@ DEFAULT_EULER_SEQ = 'zxy'
 
 class RotConvert:
     
+    @staticmethod
     def rotmat2euler(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
         """
         Convert rotation matrix representation into Euler angle, with selected Euler sequence
@@ -20,13 +21,13 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3, 3))
-        rotation = Rotation.from_matrix(input_seq)
+        rotation = Rotation.from_matrix(input_seq) # type:ignore
         euler_seq = rotation.as_euler(seq=eul_seq)
 
         # restore original shape
         return np.reshape(euler_seq, orig_shape)
 
-
+    @staticmethod
     def aa2euler(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
         """
         Convert angle-axis representation into Euler angle, with selected Euler sequence
@@ -42,13 +43,12 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_rotvec(input_seq)
+        rotation = Rotation.from_rotvec(input_seq) # type:ignore
         euler_seq = rotation.as_euler(seq=eul_seq)
 
         # restore original shape
         return np.reshape(euler_seq, orig_shape)
-
-
+    @staticmethod
     def euler2aa(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
         """
         Convert Euler angle representation into angle-axis, with selected Euler sequence
@@ -64,13 +64,12 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_euler(eul_seq, input_seq)
+        rotation = Rotation.from_euler(eul_seq, input_seq) # type:ignore
         aa_seq = rotation.as_rotvec()
 
         # restore original shape
         return np.reshape(aa_seq, orig_shape)
-
-
+    @staticmethod
     def aa2rotmat(input_seq) -> np.ndarray:
         """
         Convert angle-axis representation into rotation matrix,
@@ -85,13 +84,12 @@ class RotConvert:
 
         # isolate single rotations for conversion
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_rotvec(input_seq)
+        rotation = Rotation.from_rotvec(input_seq) # type:ignore
         rotmat_seq = rotation.as_matrix()
 
         # restore original shape
         return np.reshape(rotmat_seq, return_shape)
-
-
+    @staticmethod
     def rotmat2aa(input_seq) -> np.ndarray:
         """
         Convert rotation matri representation into angle-axis,
@@ -106,7 +104,7 @@ class RotConvert:
 
         # isolate single rotations for conversion
         input_seq = np.reshape(input_seq, (-1, 3, 3))
-        rotation = Rotation.from_matrix(input_seq)
+        rotation = Rotation.from_matrix(input_seq) # type:ignore
         aa_seq = rotation.as_rotvec()
 
         # restore original shape
