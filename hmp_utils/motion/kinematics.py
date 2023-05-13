@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, Union
-from hmp_utils.motion.pose_conversions import aa2rotmat
+from .. import RotConvert
 
 
 """
@@ -106,7 +106,7 @@ class ForwardKinematics:
         keyp_rotations[joint_keyp_ids] = joint_rots_arr
         
         # convert angle-axis notations to rotation matrices
-        keyp_rotmats = aa2rotmat(keyp_rotations)
+        keyp_rotmats = RotConvert.aa2rotmat(keyp_rotations)
         # forward kinematic is performed on the set of keypoints
         keyp_rotmats = np.reshape(keyp_rotmats, (-1, self.num_keypoints, 3, 3))
         
