@@ -21,7 +21,7 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3, 3))
-        rotation = Rotation.from_matrix(input_seq)
+        rotation = Rotation.from_matrix(input_seq) # type:ignore
         euler_seq = rotation.as_euler(seq=eul_seq)
 
         # restore original shape
@@ -43,7 +43,7 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_rotvec(input_seq)
+        rotation = Rotation.from_rotvec(input_seq) # type:ignore
         euler_seq = rotation.as_euler(seq=eul_seq)
 
         # restore original shape
@@ -64,7 +64,7 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_euler(eul_seq, input_seq)
+        rotation = Rotation.from_euler(eul_seq, input_seq) # type:ignore
         aa_seq = rotation.as_rotvec()
 
         # restore original shape
@@ -84,7 +84,7 @@ class RotConvert:
 
         # isolate single rotations for conversion
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_rotvec(input_seq)
+        rotation = Rotation.from_rotvec(input_seq) # type:ignore
         rotmat_seq = rotation.as_matrix()
 
         # restore original shape
@@ -104,7 +104,7 @@ class RotConvert:
 
         # isolate single rotations for conversion
         input_seq = np.reshape(input_seq, (-1, 3, 3))
-        rotation = Rotation.from_matrix(input_seq)
+        rotation = Rotation.from_matrix(input_seq) # type:ignore
         aa_seq = rotation.as_rotvec()
 
         # restore original shape
