@@ -52,7 +52,7 @@ def downsample_motion(source_array: np.ndarray, source_framerate: float,
     if method == DownsampleMethod.decimate:
         try:
             downsampling_factor = int(round(source_framerate/target_framerate))
-            original_len = int(np.floor(source_array.shape[0]/downsampling_factor))  # type: ignore
+            original_len = int(np.floor(source_array.shape[0]/downsampling_factor))
             downsampled_array = signal.decimate(source_array, downsampling_factor,
                                                 zero_phase=True, axis=0)[:original_len]
             return np.array(downsampled_array)
@@ -95,7 +95,7 @@ def downsample_motion(source_array: np.ndarray, source_framerate: float,
         interpolated_rotations = []
         for i in range(source_array.shape[0]):
             sequence = source_array[i]
-            slerp_worker = Slerp(original_key_times, Rotation.from_rotvec(sequence))  # type:ignore
+            slerp_worker = Slerp(original_key_times, Rotation.from_rotvec(sequence))
             interpolated_sequence = slerp_worker(target_times)
             interpolated_rotations.append(interpolated_sequence.as_rotvec())
 

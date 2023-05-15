@@ -39,7 +39,7 @@ class ForwardKinematics:
         - offsets_are_relative (bool): whether the given keypoints position offsets are absolute
             (an array of absolute positions of the body keypoints like AMASS), or relative like
             Human3.6M where the list contains vectors that displace the position of the keypoint
-            in relation to the position of the parent keypoint. Automatically set with the 
+            in relation to the position of the parent keypoint. Automatically set with the
             set_body_model_type() function
         - left_mul (bool): whether to concatenate rotations like R3*R2*R1 (AMASS way) or vice versa
             (Human3.6M way). Automatically set with the set_body_model_type() function
@@ -68,7 +68,7 @@ class ForwardKinematics:
         self.parents = parents
         self.left_mul = left_mul
 
-    def set_body_model_type(self, model_type:BodyModelType):
+    def set_body_model_type(self, model_type: BodyModelType):
         """
         The forward kinematics is computed in a different way between SMPL
         poses and Human2.6M poses.

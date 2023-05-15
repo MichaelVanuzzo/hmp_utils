@@ -111,9 +111,9 @@ def plot_body_keypoints(keypoint_pos_lst: list,
     plot_ranges_lst = np.array(plot_ranges_lst)*image_margins_factor
     range_min, range_max = (np.min(plot_ranges_lst), np.max(plot_ranges_lst))
     
-    ax.axes.set_xlim3d(left=range_min, right=range_max) # type: ignore
-    ax.axes.set_ylim3d(bottom=range_min, top=range_max) # type: ignore
-    ax.axes.set_zlim3d(bottom=range_min, top=range_max) # type: ignore
+    ax.axes.set_xlim3d(left=range_min, right=range_max)
+    ax.axes.set_ylim3d(bottom=range_min, top=range_max)
+    ax.axes.set_zlim3d(bottom=range_min, top=range_max)
 
     # Set the camera angle
     ax.view_init(elev=elevation, azim=azimuth)

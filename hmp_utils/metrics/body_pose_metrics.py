@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Union, Optional
 
-from .. import RotConvert, DEFAULT_EULER_SEQ
-from .. import ForwardKinematics, fk_return
+from .. import RotConvert
+from .. import ForwardKinematics, FkReturnType
 
 """
 ## Example usage:
@@ -42,7 +42,9 @@ class MetricsPostProcess:
             axes_to_mean = tuple(i for i in range(len(self.errors.shape[:-1])))
             self.errors = np.mean(errors_tensor, axes_to_mean)
 
-    def cumulative(self, start_frame: Optional[int] = None, end_frame: Optional[int] = None):
+    def cumulative(
+        self, start_frame: Optional[int] = None, end_frame: Optional[int] = None
+    ):
         """
         Compute cumulative error from the start of the sequence. If `end_frame` is provided, returns
         the cumulative error summed up until the `at_frame`, excluded. If `end_frame` is not specified,
@@ -57,11 +59,11 @@ class MetricsPostProcess:
             start_frame = 0
         if end_frame is None:
             # cumulate including the last frame
-            end_frame = len(self.errors)-1
+            end_frame = len(self.errors) - 1
 
         end_frame = self.is_valid_frame(end_frame)
         start_frame = self.is_valid_frame(start_frame)
-        return np.sum(self.errors[start_frame:end_frame+1])
+        return np.sum(self.errors[start_frame : end_frame + 1])
 
     def instant(self, at_frame: int):
         """
@@ -87,7 +89,7 @@ class MetricsPostProcess:
 
         at_frame = self.is_valid_frame(at_frame)
         window_start_frame = at_frame + 1 - window_len_frames
-        return np.mean(self.errors[window_start_frame:at_frame+1])
+        return np.mean(self.errors[window_start_frame : at_frame + 1])
 
     def is_valid_frame(self, frame: int) -> int:
         """
@@ -97,53 +99,60 @@ class MetricsPostProcess:
         """
         num_frames = self.errors.shape[-1]
         if frame not in range(-num_frames, num_frames):
-            raise Exception(f'Provided frame index is not valid: {frame}. '
-                            f'Number of frames in euler errors array: {num_frames}')
+            raise Exception(
+                f"Provided frame index is not valid: {frame}. "
+                f"Number of frames in euler errors array: {num_frames}"
+            )
         if frame < 0:
             return len(self.errors + frame)
         return frame
 
 
 class MetricsProcessor:
-
-    def __init__(self,
-                 predictions: Union[list, np.ndarray],
-                 targets: Union[list, np.ndarray],
-                 joints_to_metric: Optional[Union[list, np.ndarray]] = None
-                 ) -> None:
+    def __init__(
+        self,
+        predictions: Union[list, np.ndarray],
+        targets: Union[list, np.ndarray],
+        joints_to_metric: Optional[Union[list, np.ndarray]] = None,
+    ) -> None:
         """
         - predictions and targets must be in angle-axis representation
         - predictions and targets shapes: (..., n_joints, 3)
 
         ---
         ### Args:
-        - predictions (ndarray): array of predicted joint relative angles in the angle-axis representation
-            with shape (batch_size, num_frames, num_keypoints, 3)
-        - targets (ndarray): same shape of predictions
+        - predictions (ndarray): array of predicted joint relative angles in
+            the angle-axis representation with shape (batch_size, num_frames,
+            num_keypoints, 3)
+        - targets (ndarray): same shape and representation of predictions
         - joints_to_metric (array-like, optional): joints for which to return the joint angle differences (as single joints or
             averaged over the joints depending on the `single_joints_errors` parameter)
         """
         self.predictions_aa = np.array(predictions)
         self.targets_aa = np.array(targets)
-        self.predictions_rotmat = None
-        self.targets_rotmat = None
-        self.rotmats_are_global = False
         self.joints_to_metric = np.array(joints_to_metric)
-        
-        if not self.predictions_aa.shape[-1] == self.targets_aa.shape[-1] == 3:
-            raise Exception('predictions and targets have to be in angle-axis representation with 3 '
-                            'components (3d vector which mangitude is the rotation angle)')
-        if self.predictions_aa.shape != self.targets_aa.shape:
-            raise Exception('Targets and predictions must have same shapes')
 
-    def euler_error(self, euler_seq: Optional[str] = None) -> np.ndarray:
+        if not self.predictions_aa.shape[-1] == self.targets_aa.shape[-1] == 3:
+            raise Exception(
+                "predictions and targets have to be in angle-axis representation with 3 "
+                "components (3d vector which mangitude is the rotation angle)"
+            )
+        if self.predictions_aa.shape != self.targets_aa.shape:
+            raise Exception("Targets and predictions must have same shapes")
+
+    # NOTE: add ability to return single euler errors for each joint
+    def euler_error(
+        self,
+        euler_seq: str = RotConvert.DEFAULT_EULER_SEQ,
+        single_joints_errors: bool = False,
+    ) -> np.ndarray:
         """
         Computes the Euler angle error following:
         https://github.com/una-dinosauria/human-motion-prediction/blob/master/src/translate.py#L207
-        and: 
+        and:
         https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py
 
-        - the Euler angle is computed as the Euclidean distance between flattened body pose (vectors 
+        - the Euler angle is computed as the Euclidean distance between flattened body pose (vectors
             with shape (n_joints*3)) so that the return shape looks like (..., )
         - if the joints to metric are not specified, only the joints with some degree of variance will
             be used to calculate the error.
@@ -153,53 +162,37 @@ class MetricsProcessor:
         n_joints = self.targets_aa.shape[-2]
 
         # convert into Euler representation
-        if euler_seq is None:
-            euler_seq = DEFAULT_EULER_SEQ
         euler_preds = RotConvert.aa2euler(self.predictions_aa, euler_seq)
         euler_targs = RotConvert.aa2euler(self.targets_aa, euler_seq)
 
         # reshape to (-1, n_joints*3) to be consistent with previous work
-        euler_preds = np.reshape(euler_preds, [-1, n_joints*3])
-        euler_targs = np.reshape(euler_targs, [-1, n_joints*3])
+        euler_preds = np.reshape(euler_preds, [-1, n_joints * 3])
+        euler_targs = np.reshape(euler_targs, [-1, n_joints * 3])
 
         if self.joints_to_metric is None:
-            # Keep only the joints that have significant movement in the trajectories (in order to remove
-            # end effectors from the metric computation)
-            idx_to_use = np.where(np.std(euler_targs, 0) > 1e-4)[0]
+            idx_to_use = [i for i in range(n_joints)]
         else:
             j_ids = np.array(self.joints_to_metric)
-            idx_to_use = np.hstack([j_ids*3+i for i in range(3)])
+            idx_to_use = np.hstack([j_ids * 3 + i for i in range(3)])
 
         # Compute euclidean distance (L2 norm) on the body poses (vectors like (num_joints*3))
         # The resulting error tensor will have 1 Euler distance per time step per sequence ecc
-        euc_error = np.linalg.norm(euler_targs[:, idx_to_use] - 
-                                   euler_preds[:, idx_to_use],axis=1) # shape (-1,) # type: ignore
+        euc_error = np.linalg.norm(
+            euler_targs[:, idx_to_use] - euler_preds[:, idx_to_use], axis=1
+        )
 
         # reshape to original (..., 1)
         return np.reshape(euc_error, return_shape)
 
-    def global_joint_angle_diff(self, f_kinematics_processor: ForwardKinematics,
-                                single_joints_errors: bool = False):
-        """
-        ---
-        ### Global / Local Rotations:
-        - global angles means that the angle difference is calculated for each joint using the joint
-            global orientation (with respect to absolute system)
-        - local angles means that the metric is computed using the relative angles of the joints 
-            (relative to the parent joint, that is the standard representation)
-        """
-        # need forward kinematics to compute the global rotations
-        if not self.rotmats_are_global:
-            self.predictions_rotmat = f_kinematics_processor.compute_fk(self.predictions_aa, return_type=fk_return.rotations)
-            self.targets_rotmat = f_kinematics_processor.compute_fk(self.targets_aa, return_type=fk_return.rotations)
-            self.rotmats_are_global = True
-            
-        return self.joint_angle_diff(single_joints_errors)
-
-    def joint_angle_diff(self, single_joints_errors: bool = False):
+    def joint_angle_diff(
+        self,
+        single_joints_errors: bool = False,
+        f_kinematics_processor: Optional[ForwardKinematics] = None,
+        use_global_rotations: bool = False,
+    ):
         """
         Compute the angle needed to align each joint in the predictions to the targets.
-        Expects the predictions and targets to be in angle-axis representation, as tensors of 
+        Expects the predictions and targets to be in angle-axis representation, as tensors of
         shape (..., num_joints, 3)
 
         Credits to: [SPL](https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py)
@@ -217,27 +210,39 @@ class MetricsProcessor:
         with shape (..., num_joints)
         """
         # save the first part of the shape in order to return (..., ) or (..., nun_joints)
-        if self.predictions_rotmat is None or self.targets_rotmat is None:
-            return_shape = self.targets_aa.shape[:-1]
-            self.predictions_rotmat = RotConvert.aa2rotmat(self.predictions_aa)
-            self.targets_rotmat = RotConvert.aa2rotmat(self.targets_aa)
-        else:
-            return_shape = self.targets_aa.shape[:-2]
+        return_shape = self.targets_aa.shape[:-1]
 
-        predictions_rotmat = np.reshape(self.predictions_rotmat, (-1, 3, 3))
-        targets_rotmat = np.reshape(self.targets_rotmat, (-1, 3, 3))
+        if use_global_rotations:
+            if f_kinematics_processor is None:
+                raise Exception('When use_global_rotations is true, the f_kinematics_processor '
+                                'must be provided (ForwardKinematics class)')
+
+            predictions = f_kinematics_processor.compute_fk(
+                self.predictions_aa, return_type=FkReturnType.rotations
+            )
+            targets = f_kinematics_processor.compute_fk(
+                self.targets_aa, return_type=FkReturnType.rotations
+            )
+        else:
+            # use local rotations
+            predictions = RotConvert.aa2rotmat(self.predictions_aa)
+            targets = RotConvert.aa2rotmat(self.targets_aa)
+
+        predictions_rotmat = np.reshape(predictions, (-1, 3, 3))
+        targets_rotmat = np.reshape(targets, (-1, 3, 3))
 
         # rotation difference represented as rotation matrix: R1 * R2.T
         # due to the reshaping the first dimension (at 0) contains all the dimensions other than the
         # matrices ones; the shape at 1,2 is the 3x3 matrix which need to be transposed
-        rot_diff = np.matmul(predictions_rotmat, np.transpose(targets_rotmat, (0, 2, 1)))
+        rot_diff = np.matmul(
+            predictions_rotmat, np.transpose(targets_rotmat, (0, 2, 1))
+        )
 
         # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
         # the predicted and target orientations
         aa = RotConvert.rotmat2aa(rot_diff)
-        angles = np.linalg.norm(aa, axis=1)
+        angles = np.linalg.norm(aa, axis=1)  # NOTE: check if correct
 
-        angles = np.array(angles)
         angles = np.reshape(angles, return_shape)
 
         if single_joints_errors:
@@ -246,10 +251,13 @@ class MetricsProcessor:
             # average over the joints
             return np.mean(angles[..., self.joints_to_metric], axis=-1)
 
-    def positional_error(self, f_kinematics_processor: ForwardKinematics,
-                         compute_keypoints_mean: bool,
-                         joint_to_normalize: Optional[int] = None
-                         ) -> np.ndarray:
+    # NOTE: change compute_keypoints_mean to single_joints_errors like other funcitons
+    def positional_error(
+        self,
+        f_kinematics_processor: ForwardKinematics,
+        compute_keypoints_mean: bool,
+        joint_to_normalize: Optional[int] = None,
+    ) -> np.ndarray:
         """
         Given the angle-axis representation of the joints, compute the forward kinematics on the
         skeleton and caculate the euclidean distance between each joint (among the joints selected
@@ -265,22 +273,30 @@ class MetricsProcessor:
 
         ---
         ### Return:
-        The euclidean distances between predictions and targets. Rerturn shape: (batch_size, num_frames, num_keypoints) or 
-            (batch_size, num_frames) if keypoints_mean is true
+        The euclidean distances between predictions and targets. Rerturn shape:
+            (batch_size, num_frames, num_keypoints) or (batch_size, num_frames)
+            if keypoints_mean is true
         """
 
         if joint_to_normalize is not None:
             f_kinematics_processor.normalize_joints(reference_joint=joint_to_normalize)
 
         # convert angles into positions
-        predictions_pos = f_kinematics_processor.compute_fk(self.predictions_aa,
-                                                            return_type=fk_return.positions)
-        targets_pos = f_kinematics_processor.compute_fk(self.targets_aa,
-                                                        return_type=fk_return.positions)
+        predictions_pos = f_kinematics_processor.compute_fk(
+            self.predictions_aa, return_type=FkReturnType.positions
+        )
+        targets_pos = f_kinematics_processor.compute_fk(
+            self.targets_aa, return_type=FkReturnType.positions
+        )
 
         # return the euclidean distance between the joint positions
         distances = np.linalg.norm(
-            (predictions_pos[:, :, self.joints_to_metric] - targets_pos[:, :, self.joints_to_metric]), axis=-1)
+            (
+                predictions_pos[:, :, self.joints_to_metric]
+                - targets_pos[:, :, self.joints_to_metric]
+            ),
+            axis=-1,
+        )
 
         if compute_keypoints_mean:
             return np.mean(distances, axis=-1)

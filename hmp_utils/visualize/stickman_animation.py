@@ -138,7 +138,7 @@ def pose_animation(motions_list:list,
     # this is text to display other information during the animation
     subplot_info_text_lst = []
     for ax in axes:
-        subplot_info_text_lst.append(ax.text2D(0.05, 0.05, '', transform=ax.transAxes, ha='left', va='bottom')) # type: ignore
+        subplot_info_text_lst.append(ax.text2D(0.05, 0.05, '', transform=ax.transAxes, ha='left', va='bottom'))
 
     # -- DEFINE LINES TO BE PLOTTED --
     # For efficiency, the lines are plotted one time and then updated during the animation
@@ -214,9 +214,9 @@ def pose_animation(motions_list:list,
         ax.set_title(f'{figure_title}')
         
         # ranges of visualization
-        ax.axes.set_xlim3d(left=camera_range[0], right=camera_range[1]) # type: ignore
-        ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
-        ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1]) # type: ignore
+        ax.axes.set_xlim3d(left=camera_range[0], right=camera_range[1])
+        ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1])
+        ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1])
 
     ani = FuncAnimation(fig, update, frames=min_len_frames, interval=1000/animation_framerate)
 
