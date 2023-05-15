@@ -172,9 +172,8 @@ class MetricsProcessor:
 
         # Compute euclidean distance (L2 norm) on the body poses (vectors like (num_joints*3))
         # The resulting error tensor will have 1 Euler distance per time step per sequence ecc
-        euc_error = np.power(euler_targs[:, idx_to_use] -   # type: ignore
-                             euler_preds[:, idx_to_use], 2)
-        euc_error = np.sqrt(np.sum(euc_error, axis=1))  # shape (-1,) # type: ignore
+        euc_error = np.linalg.norm(euler_targs[:, idx_to_use] - 
+                                   euler_preds[:, idx_to_use],axis=1) # shape (-1,) # type: ignore
 
         # reshape to original (..., 1)
         return np.reshape(euc_error, return_shape)
