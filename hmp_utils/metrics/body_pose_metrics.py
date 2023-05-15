@@ -247,8 +247,6 @@ class MetricsProcessor:
             # average over the joints
             return np.mean(angles[..., self.joints_to_metric], axis=-1)
 
-    # SISTEMARE QUESTO: tra i parametri deve esserci un oggetto di tipo forward kinematics
-
     def positional_error(self, f_kinematics_processor: ForwardKinematics,
                          compute_keypoints_mean: bool,
                          joint_to_normalize: Optional[int] = None
