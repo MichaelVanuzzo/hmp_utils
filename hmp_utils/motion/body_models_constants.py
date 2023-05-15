@@ -1,3 +1,10 @@
+from enum import Enum, auto
+
+class BodyModelType(Enum):
+    smpl = auto()
+    h36m = auto()
+
+
 class SmplConstants:
     # ---------------SMPL---------------
     # Keypoints are all the joints and end effectors combined
@@ -373,6 +380,7 @@ class SmplConstants:
         ],
     }
 
+    BODY_MODEL_TYPE = BodyModelType.smpl
 
 class H36MConstants:
     # --------------Human3.6M---------------
@@ -516,3 +524,5 @@ class H36MConstants:
         [0.00000000e00, 1.37499922e02, 0.00000000e00],
         [0.00000000e00, 0.00000000e00, 0.00000000e00],
     ]
+
+    BODY_MODEL_TYPE = BodyModelType.h36m
