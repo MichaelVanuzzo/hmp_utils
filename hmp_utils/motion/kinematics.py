@@ -135,7 +135,7 @@ class ForwardKinematics:
 
         if None in [self.offsets_are_relative, self.left_mul]:
             raise Exception(
-                'Please indicate bothparameter for "offsets are relative" and '
+                'Please indicate both values for "offsets are relative" and '
                 'whether "left multiplication" should be performed'
             )
 
