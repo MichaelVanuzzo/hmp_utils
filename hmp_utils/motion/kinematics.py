@@ -23,8 +23,8 @@ class ForwardKinematics:
         self,
         offsets: Union[np.ndarray, list],
         parents: Union[np.ndarray, list],
-        offsets_are_relative: bool = False,
-        left_mul: bool = False,
+        offsets_are_relative: Optional[bool] = None,
+        left_mul: Optional[bool] = None,
     ) -> None:
         """
         Body offsets refer to the position of keypoints. The offsets may be
@@ -58,11 +58,13 @@ class ForwardKinematics:
         self.num_keypoints = len(offsets)
         # compute body_links vectors: joint to parent displacement vectors
         self.body_links_offsets = np.zeros([self.num_keypoints, 3])
-        self.body_links_offsets[0] = offsets[0]
-        # compute the vectors that connect a body keypoint to its parent (not needed for the root joint)
-        if offsets_are_relative:
-            self.body_links_offsets = offsets
-        else:
+
+        self.offsets_are_relative = offsets_are_relative
+        self.body_links_offsets = offsets
+
+        if offsets_are_relative is False:
+            # compute the vectors that connect a body keypoint to its parent
+            # (not needed for the root joint)
             self.body_links_offsets[1:] = offsets[1:] - offsets[parents[1:]]
 
         self.parents = parents
@@ -79,11 +81,16 @@ class ForwardKinematics:
         - For Human3.6M body model pass BodyModelType.h36m
         """
         if model_type == BodyModelType.smpl:
-            self.offsets_are_relative = (False,)
-            self.left_mul = (False,)
+            if self.offsets_are_relative is None:
+                self.body_links_offsets[1:] = (
+                    self.body_links_offsets[1:]
+                    - self.body_links_offsets[self.parents[1:]]
+                )
+            self.offsets_are_relative = False
+            self.left_mul = False
         elif model_type == BodyModelType.h36m:
-            self.offsets_are_relative = (True,)
-            self.left_mul = (True,)
+            self.offsets_are_relative = True
+            self.left_mul = True
         else:
             raise Exception(f"Model type not recognized {model_type}")
 
@@ -125,6 +132,12 @@ class ForwardKinematics:
         ### Returns:
         A numpy array containing the computed keypoint positions or rotations matrices.
         """
+
+        if None in [self.offsets_are_relative, self.left_mul]:
+            raise Exception(
+                'Please indicate bothparameter for "offsets are relative" and '
+                'whether "left multiplication" should be performed'
+            )
 
         orig_shape = joint_rots.shape
 

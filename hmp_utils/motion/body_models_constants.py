@@ -1,5 +1,6 @@
 from enum import Enum, auto
 
+
 class BodyModelType(Enum):
     smpl = auto()
     h36m = auto()
@@ -379,8 +380,12 @@ class SmplConstants:
             [-7.35578759e-01, 2.05180646e-01, -5.39352281e-02],
         ],
     }
-
+    # OFFSETS_ARE_RELATIVE: indicates that offsets are global, so referred to the root joint
+    OFFSETS_ARE_RELATIVE = False
+    # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
+    LEFT_MUL = False
     BODY_MODEL_TYPE = BodyModelType.smpl
+
 
 class H36MConstants:
     # --------------Human3.6M---------------
@@ -525,4 +530,8 @@ class H36MConstants:
         [0.00000000e00, 0.00000000e00, 0.00000000e00],
     ]
 
+    # OFFSETS_ARE_RELATIVE: indicates that offsets are global, so referred to the root joint
+    OFFSETS_ARE_RELATIVE = True
+    # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
+    LEFT_MUL = True
     BODY_MODEL_TYPE = BodyModelType.h36m
