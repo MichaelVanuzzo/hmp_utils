@@ -34,7 +34,10 @@ class MetricsPostProcess:
             (..., num_frames) in which case the mean over all the dimensions (except for the last) is computed.
         """
         # Convert to numpy array
-        self.errors: np.ndarray = np.array(errors_tensor)
+        if not isinstance(errors_tensor, np.ndarray):
+            self.errors = np.array(errors_tensor)
+        else:
+            self.errors = errors_tensor
 
         # Average over the dimensions other than last if necessary
         if len(self.errors.shape) > 1:
@@ -128,9 +131,18 @@ class MetricsProcessor:
         - joints_to_metric (array-like, optional): joints for which to return the joint angle differences (as single joints or
             averaged over the joints depending on the `single_joints_errors` parameter)
         """
-        self.predictions_aa = np.array(predictions)
-        self.targets_aa = np.array(targets)
-        self.joints_to_metric = np.array(joints_to_metric)
+        if not isinstance(predictions, np.ndarray):
+            self.predictions_aa = np.array(predictions)
+        else:
+            self.predictions_aa = predictions
+        if not isinstance(targets, np.ndarray):
+            self.targets_aa = np.array(targets)
+        else:
+            self.targets_aa = targets
+        if not isinstance(joints_to_metric, np.ndarray):
+            self.joints_to_metric = np.array(joints_to_metric)
+        else:
+            self.joints_to_metric = joints_to_metric
 
         if not self.predictions_aa.shape[-1] == self.targets_aa.shape[-1] == 3:
             raise Exception(
@@ -200,12 +212,14 @@ class MetricsProcessor:
         ---
         ### Args:
         - `single_joints_errors` (bool): return shape is (..., n_joints)
-        - `as_rotmats` (bool): the rotations are by default in angle-axis representation, but predictions
-            and targets can be provided as rotation matrices instead
+        - `f_kinematics_processor` (ForwardKinematics, optional): the kinematics object used to
+            compute the forward kinematics on the given predictions/targets which always
+            represent relative rotations. This is done to compute the global rotations
+        - `use_global_rotations` (bool): compute global rotations given the fk processor object
 
         ---
         ### Returns:
-        Returns by default the mean geodesic distance for each joint as an np array of shape (..., ),
+        By default the mean geodesic distance for each joint as an np array of shape (..., ); but 
         if single_joints is True, it returns a tensor with the single joint angle difference errors
         with shape (..., num_joints)
         """
