@@ -30,7 +30,7 @@ class MocapData:
 
 def downsample_motion(source_array: np.ndarray, source_framerate: float,
                       target_framerate: float,
-                      method: 'DownsampleMethod' = DownsampleMethod.decimate
+                      method: 'DownsampleMethod' = DownsampleMethod.slerp
                       ) -> Union[np.ndarray, None]:
     """
     Downsamples the given array to a target framerate using the specified method
