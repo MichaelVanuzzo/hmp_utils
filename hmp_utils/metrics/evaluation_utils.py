@@ -22,29 +22,41 @@ def get_start_indices_srnn(len_subaction_1: int, len_subaction_2: int):
     T2 = len_subaction_2 - PREFIX - SUFFIX
 
     idxs = []
-    for _ in range(SRNN_EVALUATION_BACH_SIZE / SUBACTIONS):
+    for _ in range(SRNN_EVALUATION_BACH_SIZE // SUBACTIONS):
         idxs.append([rng.randint(16, T1), rng.randint(16, T2)])
     return idxs
 
 
 def get_h36m_evaluation_frames(
     len_subaction_1: int, len_subaction_2: int, input_len: int, output_len: int
-):
+) -> np.ndarray:
+    """
+        Returns a numpy array (subaction, bach, frame) with the frames selected for evaluation as in srnn.
+
+        ---
+        ### Args:
+        - `len_subaction_1` (int): number of frames of subaction number 1.
+        - `len_subaction_2` (int): number of frames of subaction number 2.
+        - `input_len` (int): number of input frames.
+        - `output_len` (int): number of output frames.
+    """
+    
     if input_len > PREFIX:
         raise ValueError("input_len must be smaller than or equal to 50")
     if output_len > SUFFIX:
         raise ValueError("output_len must be smaller than or equal to 100")
 
     start_idxs = get_start_indices_srnn(len_subaction_1, len_subaction_2)
+    frame_idxs = np.zeros(
+        (SUBACTIONS, SRNN_EVALUATION_BACH_SIZE, input_len + output_len)
+    )
 
-    frame_idxs_0 = []
-    frame_idxs_1 = []
+    for idx in range(SRNN_EVALUATION_BACH_SIZE):
+        t0 = (
+            start_idxs[idx // SUBACTIONS][idx % SUBACTIONS] + PREFIX
+        )  # last known frame
+        frame_idxs[idx % SUBACTIONS][idx // SUBACTIONS] = np.arange(
+            t0 - input_len, t0 + output_len
+        )
 
-    for idx in range(SRNN_EVALUATION_BACH_SIZE / SUBACTIONS):
-        t0 = start_idxs[idx][0] + PREFIX  # last known frame of subaction 0
-        t1 = start_idxs[idx][1] + PREFIX  # last known frame of subaction 1
-
-        frame_idxs_0.append(range(t0 - input_len, t0 + output_len))
-        frame_idxs_1.append(range(t1 - input_len, t1 + output_len))
-
-    return frame_idxs_0, frame_idxs_1
+    return frame_idxs
