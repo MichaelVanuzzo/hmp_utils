@@ -48,7 +48,7 @@ def get_h36m_evaluation_frames(
 
     start_idxs = get_start_indices_srnn(len_subaction_1, len_subaction_2)
     frame_idxs = np.zeros(
-        (SUBACTIONS, SRNN_EVALUATION_BACH_SIZE, input_len + output_len)
+        (SUBACTIONS, SRNN_EVALUATION_BACH_SIZE//SUBACTIONS, input_len + output_len),dtype=int
     )
 
     for idx in range(SRNN_EVALUATION_BACH_SIZE):
