@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Union, Optional
+from enum import Enum, auto
 
 from .. import RotConvert
 from .. import ForwardKinematics, FkReturnType
@@ -16,7 +17,7 @@ from .. import ForwardKinematics, FkReturnType
 """
 
 
-class MetricsPostProcess:
+class MetricsPostProcessor:
     """
     Some of the metrics were inspired by [SPL - Structured Prediction Layer Helps 3D Human Motion \
     Modelling](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
@@ -46,55 +47,60 @@ class MetricsPostProcess:
             self.errors = np.mean(errors_tensor, axes_to_mean)
 
     def cumulative(
-        self, start_frame: Optional[int] = None, end_frame: Optional[int] = None
+        self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
     ):
         """
         Compute cumulative error from the start of the sequence. If `end_frame` is provided, returns
-        the cumulative error summed up until the `at_frame`, excluded. If `end_frame` is not specified,
-        returns the cumulative error including last frame.
+        the cumulative error summed up until the `end_frame`, excluded. If `end_frame` is not specified,
+        returns the cumulative error including last frame. If `normalize` is True, the cumulative error
+        is normalized by the number of frames.
 
         ---
         ### Args:
+        - `start_frame` (int): the frame at which to start the cumulation (including the specified frame).
         - `end_frame` (int): the frame at which to sum up to (including the specified frame).
         """
-        if start_frame is None:
-            # cumulate from the start
-            start_frame = 0
         if end_frame is None:
             # cumulate including the last frame
             end_frame = len(self.errors) - 1
 
-        end_frame = self.is_valid_frame(end_frame)
-        start_frame = self.is_valid_frame(start_frame)
-        return np.sum(self.errors[start_frame : end_frame + 1])
+        end_frame = self.__is_valid_frame(end_frame)
+        start_frame = self.__is_valid_frame(start_frame)
+
+        error_sum = np.sum(self.errors[start_frame : end_frame + 1])
+        if normalize:
+            error_sum = error_sum / (end_frame - start_frame + 1)
+
+        return error_sum
 
     def instant(self, at_frame: int):
         """
         Return the Euler error at a specified frame.
         """
-        self.is_valid_frame(at_frame)
+        self.__is_valid_frame(at_frame)
         return self.errors[at_frame]
 
-    def mean_window(self, at_frame: int, window_len_frames: Optional[int] = None):
+    def windowed_mean(self, at_frame: int, window_len_frames: Optional[int] = None):
         """
-        Compute the mean Euler error in a window with the specified number of frames prior to
+        Compute the mean error in a window with the specified number of frames prior to
         the specified frame (included in the window).
 
         ---
         ### Args:
         - `at_frame`: the frame at which the averaging window ends
 
-        If `window_len_frames` is none, return the average over all the frames.
+        If `window_len_frames` is none, return the average over all the previous frames.
         """
 
+        at_frame = self.__is_valid_frame(at_frame)
         if window_len_frames is None:
-            return np.mean(self.errors)
+            window_start_frame = 0
+        else:
+            window_start_frame = at_frame + 1 - window_len_frames
 
-        at_frame = self.is_valid_frame(at_frame)
-        window_start_frame = at_frame + 1 - window_len_frames
         return np.mean(self.errors[window_start_frame : at_frame + 1])
 
-    def is_valid_frame(self, frame: int) -> int:
+    def __is_valid_frame(self, frame: int) -> int:
         """
         Check whether the frame is a valid index for the Euler errors vector.
 
@@ -219,7 +225,7 @@ class MetricsProcessor:
 
         ---
         ### Returns:
-        By default the mean geodesic distance for each joint as an np array of shape (..., ); but 
+        By default the mean geodesic distance for each joint as an np array of shape (..., ); but
         if single_joints is True, it returns a tensor with the single joint angle difference errors
         with shape (..., num_joints)
         """
@@ -228,8 +234,10 @@ class MetricsProcessor:
 
         if use_global_rotations:
             if f_kinematics_processor is None:
-                raise Exception('When use_global_rotations is true, the f_kinematics_processor '
-                                'must be provided (ForwardKinematics class)')
+                raise Exception(
+                    "When use_global_rotations is true, the f_kinematics_processor "
+                    "must be provided (ForwardKinematics class)"
+                )
 
             predictions = f_kinematics_processor.compute_fk(
                 self.predictions_aa, return_type=FkReturnType.rotations
