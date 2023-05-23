@@ -229,7 +229,7 @@ class MetricsProcessor:
         if single_joints is True, it returns a tensor with the single joint angle difference errors
         with shape (..., num_joints)
         """
-        # save the first part of the shape in order to return (..., ) or (..., nun_joints)
+        # save the first part of the shape in order to return (..., ) or (..., num_joints)
         return_shape = self.targets_aa.shape[:-1]
 
         if use_global_rotations:
@@ -273,11 +273,10 @@ class MetricsProcessor:
             # average over the joints
             return np.mean(angles[..., self.joints_to_metric], axis=-1)
 
-    # NOTE: change compute_keypoints_mean to single_joints_errors like other funcitons
     def positional_error(
         self,
         f_kinematics_processor: ForwardKinematics,
-        compute_keypoints_mean: bool,
+        single_joints_errors: bool = False,
         joint_to_normalize: Optional[int] = None,
     ) -> np.ndarray:
         """
@@ -289,16 +288,19 @@ class MetricsProcessor:
 
         ---
         ### Args:
-        - keypoints_mean (bool): whether to return the distances averaged over the keypoints
+        - single_joints_errors (bool): whether to return the distances averaged over the keypoints
         - joint_to_normalize (int, optional): chose a joint which length should be normalized to 1, which
             scale factor is used to scale all the other body links
 
         ---
         ### Return:
-        The euclidean distances between predictions and targets. Rerturn shape:
-            (batch_size, num_frames, num_keypoints) or (batch_size, num_frames)
-            if keypoints_mean is true
+        The euclidean distances between predictions and targets. Return shape:
+            (..., num_frames, num_keypoints) if single_joints_errors is true
+            or (..., num_frames) if not
         """
+
+        # save the original shape in order to return (..., ) or (..., num_joints)
+        original_shape = self.targets_aa.shape
 
         if joint_to_normalize is not None:
             f_kinematics_processor.normalize_joints(reference_joint=joint_to_normalize)
@@ -311,16 +313,24 @@ class MetricsProcessor:
             self.targets_aa, return_type=FkReturnType.positions
         )
 
-        # return the euclidean distance between the joint positions
+        # remove extra dimensions if present
+        predictions_pos = np.reshape(predictions_pos, (-1,*original_shape[-2:]))
+        targets_pos = np.reshape(targets_pos, (-1,*original_shape[-2:]))
+
+        # calculate the euclidean distance between the joint positions
         distances = np.linalg.norm(
             (
-                predictions_pos[:, :, self.joints_to_metric]
-                - targets_pos[:, :, self.joints_to_metric]
+                predictions_pos[:,self.joints_to_metric]
+                - targets_pos[:,self.joints_to_metric]
             ),
             axis=-1,
         )
 
-        if compute_keypoints_mean:
-            return np.mean(distances, axis=-1)
-        else:
+        # restore the original shape
+        distances = np.reshape(distances, (*original_shape[:-2],-1))
+
+        if single_joints_errors:
             return distances
+        else:
+            # average over the joints
+            return np.mean(distances, axis=-1)
