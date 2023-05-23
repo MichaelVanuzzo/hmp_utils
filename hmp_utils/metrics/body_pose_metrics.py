@@ -84,9 +84,13 @@ class MetricsProcessor:
         euler_preds = RotConvert.aa2euler(self.predictions_aa, euler_seq)
         euler_targs = RotConvert.aa2euler(self.targets_aa, euler_seq)
 
-        # reshape to (-1, n_joints*3) to be consistent with previous work
-        euler_preds = np.reshape(euler_preds, [-1, n_joints * 3])
-        euler_targs = np.reshape(euler_targs, [-1, n_joints * 3])
+        # reshape to (-1, len(self.joints_to_compute), 3)
+        euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[
+            :, self.joints_to_compute, :
+        ]
+        euler_targs = np.reshape(euler_targs, [-1, n_joints, 3])[
+            :, self.joints_to_compute, :
+        ]
 
         n_joints = len(self.joints_to_compute)
 
@@ -96,13 +100,6 @@ class MetricsProcessor:
             raise Exception(
                 "The length of joints_to_compute and joint_weights must be the same"
             )
-
-        euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[
-            :, self.joints_to_compute, :
-        ]
-        euler_targs = np.reshape(euler_targs, [-1, n_joints, 3])[
-            :, self.joints_to_compute, :
-        ]
 
         if single_joint_errors:
             # Compute euclidean distance (L2 norm) on the body joints (vectors like (3))

@@ -50,7 +50,7 @@ class ForwardKinematics:
         if not isinstance(parents, np.ndarray):
             self.parents = np.array(parents)
 
-        if len(self.offsets) != len(self.parents):
+        if len(self.body_link_offsets) != len(self.parents):
             raise Exception(
                 "Length of keypoint offsets should have same length of keypoint parents list"
             )
