@@ -46,29 +46,32 @@ class ForwardKinematics:
         """
 
         if not isinstance(offsets, np.ndarray):
-            offsets = np.array(offsets)
+            self.body_link_offsets = np.array(offsets)
         if not isinstance(parents, np.ndarray):
-            parents = np.array(parents)
+            self.parents = np.array(parents)
 
-        if len(offsets) != len(parents):
+        if len(self.offsets) != len(self.parents):
             raise Exception(
                 "Length of keypoint offsets should have same length of keypoint parents list"
             )
 
         self.num_keypoints = len(offsets)
-        # compute body_links vectors: joint to parent displacement vectors
-        self.body_links_offsets = np.zeros([self.num_keypoints, 3])
-
         self.offsets_are_relative = offsets_are_relative
-        self.body_links_offsets = offsets
+        self.left_mul = left_mul
 
         if offsets_are_relative is False:
-            # compute the vectors that connect a body keypoint to its parent
-            # (not needed for the root joint)
-            self.body_links_offsets[1:] = offsets[1:] - offsets[parents[1:]]
+            self.__compute_relative_offsets()
 
-        self.parents = parents
-        self.left_mul = left_mul
+    def __compute_relative_offsets(self):
+        """
+        Make the offsets relative to the parent joint (not needed for the root joint).
+        """
+        if self.offsets_are_relative:
+            raise Exception("Offsets are already relative")
+        self.body_link_offsets[1:] = (
+            self.body_link_offsets[1:] - self.body_link_offsets[self.parents[1:]]
+        )
+        self.offsets_are_relative = True
 
     def set_body_model_type(self, model_type: BodyModelType):
         """
@@ -82,11 +85,7 @@ class ForwardKinematics:
         """
         if model_type == BodyModelType.smpl:
             if self.offsets_are_relative is None:
-                self.body_links_offsets[1:] = (
-                    self.body_links_offsets[1:]
-                    - self.body_links_offsets[self.parents[1:]]
-                )
-            self.offsets_are_relative = False
+                self.__compute_relative_offsets()
             self.left_mul = False
         elif model_type == BodyModelType.h36m:
             self.offsets_are_relative = True
@@ -100,8 +99,8 @@ class ForwardKinematics:
         so that the reference joint has length 1.
         The body link length refers to the offset between `reference_joint` and its parent
         """
-        ref_joint_len = np.linalg.norm(self.body_links_offsets[reference_joint])
-        self.body_links_offsets = self.body_links_offsets / ref_joint_len
+        ref_joint_len = np.linalg.norm(self.body_link_offsets[reference_joint])
+        self.body_link_offsets = self.body_link_offsets / ref_joint_len
 
     def compute_fk(
         self,
@@ -109,7 +108,7 @@ class ForwardKinematics:
         apply_root_rotation: bool = False,
         root_translation: Optional[np.ndarray] = None,
         return_type: FkReturnType = FkReturnType.positions,
-    ) -> np.ndarray:
+    ) -> np.ndarray:  # TODO: clean up
         """
         Compute forward kinematics for the object initialized with the body offsets (global or local
         positions). It computes only local positions, meaning that the positions are referenced to
@@ -117,15 +116,15 @@ class ForwardKinematics:
 
         ---
         ### Args:
-        - joint_rots (list, ndarray): relative joint rotations in angle-axis representation.
+        - joint_rots (ndarray): relative joint rotations in angle-axis representation.
             Shape (..., num_joints, 3). The number of joints must be equal to the total
             number of keypoints which position needs to be computed.
         - apply_root_rotation (bool): if False, the root joint will not rotate with respect to world
-        - root_translation (): If root_translation is None, the keypoint positions are not rotat by
+        - root_translation (Optional, np.ndarray): If root_translation is None, the keypoint positions are not rotat by
             a global transaltion. Otherwise, if a vector is given, all the joint positions will be
             translated by that amount. The translation is generally referred to the root joint (pelvis)
             translation with respect to world origin
-        - return_type (bool): return keypoints positions by default. If rotations is chose, then rotation
+        - return_type (FkReturnType): return keypoints positions by default. If rotations is chose, then rotation
             matrices representing keypoint global orientations are returned
 
         ---
@@ -169,7 +168,7 @@ class ForwardKinematics:
             shape=(*keyp_rotmats.shape[:-2], 4, 4), fill_value=np.eye(4)
         )
         # translation vectors: relative link offsets
-        transf_mats[:, :, :3, 3] = self.body_links_offsets
+        transf_mats[:, :, :3, 3] = self.body_link_offsets
         # rotation matrices
         transf_mats[:, :, :3, :3] = keyp_rotmats
 
