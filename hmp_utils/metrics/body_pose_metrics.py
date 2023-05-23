@@ -9,10 +9,10 @@ from .. import ForwardKinematics, FkReturnType
 ## Example usage:
 - predictions and targets are tensors with shape (..., num_frames, num_joints, 3) where the joints
     are for example the 24 SMPL joints.
-- joints_to_metric: since one may want to obtain the metric for a specific subset of joints, it is
-    possible to define a list of joints_to_metric that define which joints indexes should be used in the error
+- joints_to_compute: since one may want to obtain the metric for a specific subset of joints, it is
+    possible to define a list of joints_to_compute that define which joints indexes should be used in the error
     calculation out of the given ones.
-    So if prediction has shape (..., frames, 10, 3) and joints_to_metric = [1, 2, 4] then the joints with those
+    So if prediction has shape (..., frames, 10, 3) and joints_to_compute = [1, 2, 4] then the joints with those
     indexes in the predictions and targets tensors will be used to compute the error.
 """
 
@@ -22,7 +22,7 @@ class MetricsProcessor:
         self,
         predictions: Union[list, np.ndarray],
         targets: Union[list, np.ndarray],
-        joints_to_metric: Optional[Union[list, np.ndarray]] = None,
+        joints_to_compute: Optional[Union[list, np.ndarray]] = None,
     ) -> None:
         """
         - predictions and targets must be in angle-axis representation
@@ -34,8 +34,8 @@ class MetricsProcessor:
             the angle-axis representation with shape (batch_size, num_frames,
             num_keypoints, 3)
         - targets (ndarray): same shape and representation of predictions
-        - joints_to_metric (array-like, optional): joints for which to return the joint angle differences (as single joints or
-            averaged over the joints depending on the `single_joints_errors` parameter)
+        - joints_to_compute (array-like, optional): joints for which to return the joint angle differences (as single joints or
+            averaged over the joints depending on the `single_joint_errors` parameter)
         """
         if not isinstance(predictions, np.ndarray):
             self.predictions_aa = np.array(predictions)
@@ -45,10 +45,10 @@ class MetricsProcessor:
             self.targets_aa = np.array(targets)
         else:
             self.targets_aa = targets
-        if not isinstance(joints_to_metric, np.ndarray):
-            self.joints_to_metric = np.array(joints_to_metric)
+        if not isinstance(joints_to_compute, np.ndarray):
+            self.joints_to_compute = np.array(joints_to_compute)
         else:
-            self.joints_to_metric = joints_to_metric
+            self.joints_to_compute = joints_to_compute
 
         if not self.predictions_aa.shape[-1] == self.targets_aa.shape[-1] == 3:
             raise Exception(
@@ -58,22 +58,23 @@ class MetricsProcessor:
         if self.predictions_aa.shape != self.targets_aa.shape:
             raise Exception("Targets and predictions must have same shapes")
 
-    # NOTE: add ability to return single euler errors for each joint
+        if self.joints_to_compute is None:
+            joints_to_compute = [i for i in np.arange(self.targets_aa.shape[-2])]
+
     def euler_error(
         self,
         euler_seq: str = RotConvert.DEFAULT_EULER_SEQ,
-        single_joints_errors: bool = False,
+        single_joint_errors: bool = False,
+        joint_weights: Optional[Union[list, np.ndarray]] = None,
     ) -> np.ndarray:
         """
-        Computes the Euler angle error following:
-        https://github.com/una-dinosauria/human-motion-prediction/blob/master/src/translate.py#L207
-        and:
-        https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py
+        Computes the Euler angle error as the Euclidean distance between flattened body pose (vectors
+            with shape (n_joints*3)) or as the mean of the single joint distances (mean over n_joints
+            and vectors with shape (3)).
 
-        - the Euler angle is computed as the Euclidean distance between flattened body pose (vectors
-            with shape (n_joints*3)) so that the return shape looks like (..., )
-        - if the joints to metric are not specified, only the joints with some degree of variance will
-            be used to calculate the error.
+        The the return shape looks like (..., ).
+
+        If the joints to metric are not specified all the joints will be used to calculate the error.
         """
         # save the first part of the shape in order to return (..., )
         return_shape = self.targets_aa.shape[:-2]
@@ -87,24 +88,53 @@ class MetricsProcessor:
         euler_preds = np.reshape(euler_preds, [-1, n_joints * 3])
         euler_targs = np.reshape(euler_targs, [-1, n_joints * 3])
 
-        if self.joints_to_metric is None:
-            idx_to_use = [i for i in range(n_joints)]
+        n_joints = len(self.joints_to_compute)
+
+        if joint_weights is None:
+            joint_weights = np.ones(n_joints)
+        if n_joints != len(joint_weights):
+            raise ValueError(
+                "joints_to_compute and joint_weights must have the same length"
+            )
+
+        euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[
+            :, self.joints_to_compute, :
+        ]
+        euler_targs = np.reshape(euler_targs, [-1, n_joints, 3])[
+            :, self.joints_to_compute, :
+        ]
+
+        if single_joint_errors:
+            # reshape to (-1, 3)
+            euler_preds = np.reshape(euler_preds, [-1, 3])
+            euler_targs = np.reshape(euler_targs, [-1, 3])
+
+            # Compute euclidean distance (L2 norm) on the body joints (vectors like (3))
+            # The resulting error tensor will have n_joints Euler distance per time step per sequence
+            euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=1)
+            euc_distance = np.reshape(
+                euc_distance, return_shape + (n_joints,)
+            )  # (..., n_joints)
+            euc_distance = np.average(
+                euc_distance, axis=-1, weights=joint_weights
+            )  # (..., )
+
         else:
-            j_ids = np.array(self.joints_to_metric)
-            idx_to_use = np.hstack([j_ids * 3 + i for i in range(3)])
+            # reshape to (-1, n_joints*3)
+            euler_preds = np.reshape(euler_preds, [-1, n_joints * 3])
+            euler_targs = np.reshape(euler_targs, [-1, n_joints * 3])
 
-        # Compute euclidean distance (L2 norm) on the body poses (vectors like (num_joints*3))
-        # The resulting error tensor will have 1 Euler distance per time step per sequence ecc
-        euc_error = np.linalg.norm(
-            euler_targs[:, idx_to_use] - euler_preds[:, idx_to_use], axis=1
-        )
+            # Compute euclidean distance (L2 norm) on the body poses (vectors like (n_joints*3))
+            # The resulting error tensor will have 1 Euler distance per time step per sequence
+            euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=1)
 
-        # reshape to original (..., 1)
-        return np.reshape(euc_error, return_shape)
+            euc_distance = np.reshape(euc_distance, return_shape)  # (..., )
+
+        return euc_distance
 
     def joint_angle_diff(
         self,
-        single_joints_errors: bool = False,
+        single_joint_errors: bool = False,
         f_kinematics_processor: Optional[ForwardKinematics] = None,
         use_global_rotations: bool = False,
     ):
@@ -117,7 +147,7 @@ class MetricsProcessor:
 
         ---
         ### Args:
-        - `single_joints_errors` (bool): return shape is (..., n_joints)
+        - `single_joint_errors` (bool): return shape is (..., n_joints)
         - `f_kinematics_processor` (ForwardKinematics, optional): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations. This is done to compute the global rotations
@@ -167,16 +197,16 @@ class MetricsProcessor:
 
         angles = np.reshape(angles, return_shape)
 
-        if single_joints_errors:
+        if single_joint_errors:
             return angles
         else:
             # average over the joints
-            return np.mean(angles[..., self.joints_to_metric], axis=-1)
+            return np.mean(angles[..., self.joints_to_compute], axis=-1)
 
     def positional_error(
         self,
         f_kinematics_processor: ForwardKinematics,
-        single_joints_errors: bool = False,
+        single_joint_errors: bool = False,
         joint_to_normalize: Optional[int] = None,
     ) -> np.ndarray:
         """
@@ -188,14 +218,14 @@ class MetricsProcessor:
 
         ---
         ### Args:
-        - single_joints_errors (bool): whether to return the distances averaged over the keypoints
+        - single_joint_errors (bool): whether to return the distances averaged over the keypoints
         - joint_to_normalize (int, optional): chose a joint which length should be normalized to 1, which
             scale factor is used to scale all the other body links
 
         ---
         ### Return:
         The euclidean distances between predictions and targets. Return shape:
-            (..., num_frames, num_keypoints) if single_joints_errors is true
+            (..., num_frames, num_keypoints) if single_joint_errors is true
             or (..., num_frames) if not
         """
 
@@ -220,8 +250,8 @@ class MetricsProcessor:
         # calculate the euclidean distance between the joint positions
         distances = np.linalg.norm(
             (
-                predictions_pos[:, self.joints_to_metric]
-                - targets_pos[:, self.joints_to_metric]
+                predictions_pos[:, self.joints_to_compute]
+                - targets_pos[:, self.joints_to_compute]
             ),
             axis=-1,
         )
@@ -229,7 +259,7 @@ class MetricsProcessor:
         # restore the original shape
         distances = np.reshape(distances, (*original_shape[:-2], -1))
 
-        if single_joints_errors:
+        if single_joint_errors:
             return distances
         else:
             # average over the joints
@@ -244,26 +274,32 @@ class MetricsPostProcessor:
 
     def __init__(self, errors_tensor: Union[list, np.ndarray]) -> None:
         """
-        Expects an array of euler errors of shape: (..., num_frames), if more than one dimension,
+        Expects an array of errors of shape: (..., num_frames), if more than one dimension,
         performs an averaging over all the first dimensions, so that a single vector of shape
         (num_frames,) remains
 
         ---
         ### Args:
-        - `euler_errors_arr` (list, ndarray): array of euler angles as a vector of shape (num_frames) or a tensor of shape
+        - `errors_tensor` (list, ndarray): array of errors as a vector of shape (num_frames) or a tensor of shape
             (..., num_frames) in which case the mean over all the dimensions (except for the last) is computed.
         """
+
+        self.errors = self.mean_error_over_frames(errors_tensor)
+
+    @staticmethod
+    def mean_error_over_frames(errors_tensor: Union[list, np.ndarray]) -> np.ndarray:
         # Convert to numpy array
         if not isinstance(errors_tensor, np.ndarray):
-            self.errors = np.array(errors_tensor)
+            errors = np.array(errors_tensor)
         else:
-            self.errors = errors_tensor
+            errors = errors_tensor
 
         # Average over the dimensions other than last if necessary
-        if len(self.errors.shape) > 1:
+        if len(errors.shape) > 1:
             # compute a vector of euler errors for each frame
-            axes_to_mean = tuple(i for i in range(len(self.errors.shape[:-1])))
-            self.errors = np.mean(errors_tensor, axes_to_mean)
+            axes_to_mean = tuple(i for i in range(len(errors.shape[:-1])))
+            errors = np.mean(errors_tensor, axes_to_mean)
+        return errors
 
     def cumulative(
         self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
