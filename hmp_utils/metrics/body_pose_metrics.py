@@ -105,16 +105,9 @@ class MetricsProcessor:
         ]
 
         if single_joint_errors:
-            # reshape to (-1, 3)
-            euler_preds = np.reshape(euler_preds, [-1, 3])
-            euler_targs = np.reshape(euler_targs, [-1, 3])
-
             # Compute euclidean distance (L2 norm) on the body joints (vectors like (3))
             # The resulting error tensor will have n_joints Euler distance per time step per sequence
-            euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=1)
-            euc_distance = np.reshape(
-                euc_distance, return_shape + (n_joints,)
-            )  # (..., n_joints)
+            euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=-1)
             euc_distance = np.average(
                 euc_distance, axis=-1, weights=joint_weights
             )  # (..., )
@@ -126,8 +119,7 @@ class MetricsProcessor:
 
             # Compute euclidean distance (L2 norm) on the body poses (vectors like (n_joints*3))
             # The resulting error tensor will have 1 Euler distance per time step per sequence
-            euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=1)
-
+            euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=-1)
             euc_distance = np.reshape(euc_distance, return_shape)  # (..., )
 
         return euc_distance
@@ -205,8 +197,8 @@ class MetricsProcessor:
     def positional_error(
         self,
         f_kinematics_processor: ForwardKinematics,
-        single_joint_errors: bool = False,
         joint_to_normalize: Optional[int] = None,
+        single_joint_errors: bool = False,
     ) -> np.ndarray:
         """
         Given the angle-axis representation of the joints, compute the forward kinematics on the
@@ -217,6 +209,9 @@ class MetricsProcessor:
 
         ---
         ### Args:
+        - `f_kinematics_processor` (ForwardKinematics): the kinematics object used to
+            compute the forward kinematics on the given predictions/targets which always
+            represent relative rotations.
         - single_joint_errors (bool): whether to return the distances averaged over the keypoints
         - joint_to_normalize (int, optional): chose a joint which length should be normalized to 1, which
             scale factor is used to scale all the other body links
@@ -224,12 +219,13 @@ class MetricsProcessor:
         ---
         ### Return:
         The euclidean distances between predictions and targets. Return shape:
-            (..., num_frames, num_keypoints) if single_joint_errors is true
-            or (..., num_frames) if not
+            (..., num_keypoints) if single_joint_errors is true
+            or (..., ) if not
         """
 
         # save the original shape in order to return (..., ) or (..., num_joints)
         original_shape = self.targets_aa.shape
+        n_joints = self.targets_aa.shape[-2]
 
         if joint_to_normalize is not None:
             f_kinematics_processor.normalize_joints(reference_joint=joint_to_normalize)
@@ -243,26 +239,29 @@ class MetricsProcessor:
         )
 
         # remove extra dimensions if present
-        predictions_pos = np.reshape(predictions_pos, (-1, *original_shape[-2:]))
-        targets_pos = np.reshape(targets_pos, (-1, *original_shape[-2:]))
+        predictions_pos = np.reshape(predictions_pos, [-1, n_joints, 3])[
+            :, self.joints_to_compute, :
+        ]
+        targets_pos = np.reshape(targets_pos, [-1, n_joints, 3])[
+            :, self.joints_to_compute, :
+        ]
 
         # calculate the euclidean distance between the joint positions
         distances = np.linalg.norm(
-            (
-                predictions_pos[:, self.joints_to_compute]
-                - targets_pos[:, self.joints_to_compute]
-            ),
+            (predictions_pos - targets_pos),
             axis=-1,
         )
 
         # restore the original shape
-        distances = np.reshape(distances, (*original_shape[:-2], -1))
+        distances = np.reshape(
+            distances, (*original_shape[:-2], -1)
+        )  # (..., num_joints)
 
-        if single_joint_errors:
-            return distances
-        else:
+        if not single_joint_errors:
             # average over the joints
-            return np.mean(distances, axis=-1)
+            distances = np.mean(distances, axis=-1)  # (..., )
+
+        return distances
 
 
 class MetricsPostProcessor:
