@@ -93,8 +93,8 @@ class MetricsProcessor:
         if joint_weights is None:
             joint_weights = np.ones(n_joints)
         if n_joints != len(joint_weights):
-            raise ValueError(
-                "joints_to_compute and joint_weights must have the same length"
+            raise Exception(
+                "The length of joints_to_compute and joint_weights must be the same"
             )
 
         euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[
@@ -132,12 +132,12 @@ class MetricsProcessor:
 
         return euc_distance
 
-    def joint_angle_diff(
+    def joint_angle_difference(
         self,
+        use_global_rotations: bool = False,
         single_joint_errors: bool = False,
         f_kinematics_processor: Optional[ForwardKinematics] = None,
-        use_global_rotations: bool = False,
-    ):
+    ) -> np.ndarray:
         """
         Compute the angle needed to align each joint in the predictions to the targets.
         Expects the predictions and targets to be in angle-axis representation, as tensors of
@@ -147,11 +147,11 @@ class MetricsProcessor:
 
         ---
         ### Args:
+        - `use_global_rotations` (bool): compute global rotations given the fk processor object
         - `single_joint_errors` (bool): return shape is (..., n_joints)
         - `f_kinematics_processor` (ForwardKinematics, optional): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations. This is done to compute the global rotations
-        - `use_global_rotations` (bool): compute global rotations given the fk processor object
 
         ---
         ### Returns:
@@ -192,16 +192,15 @@ class MetricsProcessor:
 
         # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
         # the predicted and target orientations
-        aa = RotConvert.rotmat2aa(rot_diff)
-        angles = np.linalg.norm(aa, axis=1)  # NOTE: check if correct
+        aa_diff = RotConvert.rotmat2aa(rot_diff)
+        angles = np.linalg.norm(aa_diff, axis=1)
 
-        angles = np.reshape(angles, return_shape)
-
-        if single_joint_errors:
-            return angles
-        else:
+        angles = np.reshape(angles, return_shape)  # (..., n_joints)
+        if not single_joint_errors:
             # average over the joints
-            return np.mean(angles[..., self.joints_to_compute], axis=-1)
+            angles = np.mean(angles[..., self.joints_to_compute], axis=-1)
+
+        return angles
 
     def positional_error(
         self,
