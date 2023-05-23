@@ -17,106 +17,6 @@ from .. import ForwardKinematics, FkReturnType
 """
 
 
-class MetricsPostProcessor:
-    """
-    Some of the metrics were inspired by [SPL - Structured Prediction Layer Helps 3D Human Motion \
-    Modelling](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
-    """
-
-    def __init__(self, errors_tensor: Union[list, np.ndarray]) -> None:
-        """
-        Expects an array of euler errors of shape: (..., num_frames), if more than one dimension,
-        performs an averaging over all the first dimensions, so that a single vector of shape
-        (num_frames,) remains
-
-        ---
-        ### Args:
-        - `euler_errors_arr` (list, ndarray): array of euler angles as a vector of shape (num_frames) or a tensor of shape
-            (..., num_frames) in which case the mean over all the dimensions (except for the last) is computed.
-        """
-        # Convert to numpy array
-        if not isinstance(errors_tensor, np.ndarray):
-            self.errors = np.array(errors_tensor)
-        else:
-            self.errors = errors_tensor
-
-        # Average over the dimensions other than last if necessary
-        if len(self.errors.shape) > 1:
-            # compute a vector of euler errors for each frame
-            axes_to_mean = tuple(i for i in range(len(self.errors.shape[:-1])))
-            self.errors = np.mean(errors_tensor, axes_to_mean)
-
-    def cumulative(
-        self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
-    ):
-        """
-        Compute cumulative error from the start of the sequence. If `end_frame` is provided, returns
-        the cumulative error summed up until the `end_frame`, excluded. If `end_frame` is not specified,
-        returns the cumulative error including last frame. If `normalize` is True, the cumulative error
-        is normalized by the number of frames.
-
-        ---
-        ### Args:
-        - `start_frame` (int): the frame at which to start the cumulation (including the specified frame).
-        - `end_frame` (int): the frame at which to sum up to (including the specified frame).
-        """
-        if end_frame is None:
-            # cumulate including the last frame
-            end_frame = len(self.errors) - 1
-
-        end_frame = self.__is_valid_frame(end_frame)
-        start_frame = self.__is_valid_frame(start_frame)
-
-        error_sum = np.sum(self.errors[start_frame : end_frame + 1])
-        if normalize:
-            error_sum = error_sum / (end_frame - start_frame + 1)
-
-        return error_sum
-
-    def instant(self, at_frame: int):
-        """
-        Return the Euler error at a specified frame.
-        """
-        self.__is_valid_frame(at_frame)
-        return self.errors[at_frame]
-
-    def windowed_mean(self, at_frame: int, window_len_frames: Optional[int] = None):
-        """
-        Compute the mean error in a window with the specified number of frames prior to
-        the specified frame (included in the window).
-
-        ---
-        ### Args:
-        - `at_frame`: the frame at which the averaging window ends
-
-        If `window_len_frames` is none, return the average over all the previous frames.
-        """
-
-        at_frame = self.__is_valid_frame(at_frame)
-        if window_len_frames is None:
-            window_start_frame = 0
-        else:
-            window_start_frame = at_frame + 1 - window_len_frames
-
-        return np.mean(self.errors[window_start_frame : at_frame + 1])
-
-    def __is_valid_frame(self, frame: int) -> int:
-        """
-        Check whether the frame is a valid index for the Euler errors vector.
-
-        Always returns the equivalent positive index
-        """
-        num_frames = self.errors.shape[-1]
-        if frame not in range(-num_frames, num_frames):
-            raise Exception(
-                f"Provided frame index is not valid: {frame}. "
-                f"Number of frames in euler errors array: {num_frames}"
-            )
-        if frame < 0:
-            return len(self.errors + frame)
-        return frame
-
-
 class MetricsProcessor:
     def __init__(
         self,
@@ -314,23 +214,123 @@ class MetricsProcessor:
         )
 
         # remove extra dimensions if present
-        predictions_pos = np.reshape(predictions_pos, (-1,*original_shape[-2:]))
-        targets_pos = np.reshape(targets_pos, (-1,*original_shape[-2:]))
+        predictions_pos = np.reshape(predictions_pos, (-1, *original_shape[-2:]))
+        targets_pos = np.reshape(targets_pos, (-1, *original_shape[-2:]))
 
         # calculate the euclidean distance between the joint positions
         distances = np.linalg.norm(
             (
-                predictions_pos[:,self.joints_to_metric]
-                - targets_pos[:,self.joints_to_metric]
+                predictions_pos[:, self.joints_to_metric]
+                - targets_pos[:, self.joints_to_metric]
             ),
             axis=-1,
         )
 
         # restore the original shape
-        distances = np.reshape(distances, (*original_shape[:-2],-1))
+        distances = np.reshape(distances, (*original_shape[:-2], -1))
 
         if single_joints_errors:
             return distances
         else:
             # average over the joints
             return np.mean(distances, axis=-1)
+
+
+class MetricsPostProcessor:
+    """
+    Some of the metrics were inspired by [SPL - Structured Prediction Layer Helps 3D Human Motion \
+    Modelling](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
+    """
+
+    def __init__(self, errors_tensor: Union[list, np.ndarray]) -> None:
+        """
+        Expects an array of euler errors of shape: (..., num_frames), if more than one dimension,
+        performs an averaging over all the first dimensions, so that a single vector of shape
+        (num_frames,) remains
+
+        ---
+        ### Args:
+        - `euler_errors_arr` (list, ndarray): array of euler angles as a vector of shape (num_frames) or a tensor of shape
+            (..., num_frames) in which case the mean over all the dimensions (except for the last) is computed.
+        """
+        # Convert to numpy array
+        if not isinstance(errors_tensor, np.ndarray):
+            self.errors = np.array(errors_tensor)
+        else:
+            self.errors = errors_tensor
+
+        # Average over the dimensions other than last if necessary
+        if len(self.errors.shape) > 1:
+            # compute a vector of euler errors for each frame
+            axes_to_mean = tuple(i for i in range(len(self.errors.shape[:-1])))
+            self.errors = np.mean(errors_tensor, axes_to_mean)
+
+    def cumulative(
+        self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
+    ):
+        """
+        Compute cumulative error from the start of the sequence. If `end_frame` is provided, returns
+        the cumulative error summed up until the `end_frame`, excluded. If `end_frame` is not specified,
+        returns the cumulative error including last frame. If `normalize` is True, the cumulative error
+        is normalized by the number of frames.
+
+        ---
+        ### Args:
+        - `start_frame` (int): the frame at which to start the cumulation (including the specified frame).
+        - `end_frame` (int): the frame at which to sum up to (including the specified frame).
+        """
+        if end_frame is None:
+            # cumulate including the last frame
+            end_frame = len(self.errors) - 1
+
+        end_frame = self.__is_valid_frame(end_frame)
+        start_frame = self.__is_valid_frame(start_frame)
+
+        error_sum = np.sum(self.errors[start_frame : end_frame + 1])
+        if normalize:
+            error_sum = error_sum / (end_frame - start_frame + 1)
+
+        return error_sum
+
+    def instant(self, at_frame: int):
+        """
+        Return the Euler error at a specified frame.
+        """
+        self.__is_valid_frame(at_frame)
+        return self.errors[at_frame]
+
+    def windowed_mean(self, at_frame: int, window_len_frames: Optional[int] = None):
+        """
+        Compute the mean error in a window with the specified number of frames prior to
+        the specified frame (included in the window).
+
+        ---
+        ### Args:
+        - `at_frame`: the frame at which the averaging window ends
+
+        If `window_len_frames` is none, return the average over all the previous frames.
+        """
+
+        at_frame = self.__is_valid_frame(at_frame)
+        if window_len_frames is None:
+            window_start_frame = 0
+        else:
+            window_start_frame = at_frame + 1 - window_len_frames
+
+        return np.mean(self.errors[window_start_frame : at_frame + 1])
+
+    def __is_valid_frame(self, frame: int) -> int:
+        """
+        Check whether the frame is a valid index for the Euler errors vector.
+
+        Always returns the equivalent positive index
+        """
+        num_frames = self.errors.shape[-1]
+        if frame not in range(-num_frames, num_frames):
+            raise Exception(
+                f"Provided frame index is not valid: {frame}. "
+                f"Number of frames in euler errors array: {num_frames}"
+            )
+        if frame < 0:
+            return len(self.errors + frame)
+        return frame
