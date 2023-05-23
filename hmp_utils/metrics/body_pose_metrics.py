@@ -7,7 +7,7 @@ from .. import ForwardKinematics, FkReturnType
 
 """
 ## Example usage:
-- predictions and targets are tensors with shape (..., num_frames, num_joints, 3) where the joints
+- predictions and targets are tensors with shape (..., num_frames, n_joints, 3) where the joints
     are for example the 24 SMPL joints.
 - joints_to_compute: since one may want to obtain the metric for a specific subset of joints, it is
     possible to define a list of joints_to_compute that define which joints indexes should be used in the error
@@ -130,7 +130,7 @@ class MetricsProcessor:
         """
         Compute the angle needed to align each joint in the predictions to the targets.
         Expects the predictions and targets to be in angle-axis representation, as tensors of
-        shape (..., num_joints, 3)
+        shape (..., n_joints, 3)
 
         Credits to: [SPL](https://github.com/eth-ait/spl/blob/master/metrics/motion_metrics.py)
 
@@ -146,9 +146,9 @@ class MetricsProcessor:
         ### Returns:
         By default the mean geodesic distance for each joint as an np array of shape (..., ); but
         if single_joints is True, it returns a tensor with the single joint angle difference errors
-        with shape (..., num_joints)
+        with shape (..., n_joints)
         """
-        # save the first part of the shape in order to return (..., ) or (..., num_joints)
+        # save the first part of the shape in order to return (..., ) or (..., n_joints)
         return_shape = self.targets_aa.shape[:-1]
 
         if use_global_rotations:
@@ -220,7 +220,7 @@ class MetricsProcessor:
             or (..., ) if not
         """
 
-        # save the original shape in order to return (..., ) or (..., num_joints)
+        # save the original shape in order to return (..., ) or (..., n_joints)
         original_shape = self.targets_aa.shape
         n_joints = self.targets_aa.shape[-2]
 
@@ -250,9 +250,7 @@ class MetricsProcessor:
         )
 
         # restore the original shape
-        distances = np.reshape(
-            distances, (*original_shape[:-2], -1)
-        )  # (..., num_joints)
+        distances = np.reshape(distances, (*original_shape[:-2], -1))  # (..., n_joints)
 
         if not single_joint_errors:
             # average over the joints
