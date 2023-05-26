@@ -8,7 +8,7 @@ The example mocap is an AMASS dataset sample you can download from [here](https:
 
 import numpy as np
 from hmp_utils.motion.body_models_constants import SmplConstants
-from hmp_utils.motion.mocap_processor import load_mocap
+from hmp_utils.motion.mocap_processor import MocapLoader
 from hmp_utils.motion.kinematics import ForwardKinematics
 from hmp_utils.visualize.stickman_animation import pose_animation, CameraOrientation
 
@@ -17,11 +17,14 @@ filepath = './example_mocaps/walking_poses.npz'
 animation_framerate = 30
 
 # -- load mocap --
-motion = load_mocap(filepath, SmplConstants.KEYPOINTS, animation_framerate)
+mocap_loader=MocapLoader(body_model_type=SmplConstants.BODY_MODEL_TYPE,
+                         keypoint_ids_to_load=SmplConstants.KEYPOINTS,
+                         target_framerate=animation_framerate)
+motion = mocap_loader.load_mocap(filepath)
 assert motion is not None
 
 # -- compute joint positions --
-kine = ForwardKinematics(SmplConstants.SMPL_OFFSETS['neutral'], SmplConstants.PARENTS)
+kine = ForwardKinematics(SmplConstants.OFFSETS, SmplConstants.PARENTS)
 keypoints_positions = kine.compute_fk(motion.rots, apply_root_rotation=True)
 
 # -- ask user --
