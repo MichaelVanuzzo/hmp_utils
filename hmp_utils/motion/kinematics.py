@@ -10,8 +10,8 @@ Credits to [SPL paper](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv1
 
 
 class FkReturnType(Enum):
-    positions = auto()
-    rotations = auto()
+    POSITIONS = auto()
+    ROTATIONS = auto()
 
 
 class ForwardKinematics:
@@ -83,11 +83,11 @@ class ForwardKinematics:
         - For SMPL / AMASS body models pass BodyModelType.smpl
         - For Human3.6M body model pass BodyModelType.h36m
         """
-        if model_type == BodyModelType.smpl:
+        if model_type == BodyModelType.SMPL:
             if self.offsets_are_relative is None:
                 self.__compute_relative_offsets()
             self.left_mul = False
-        elif model_type == BodyModelType.h36m:
+        elif model_type == BodyModelType.H36M:
             self.offsets_are_relative = True
             self.left_mul = True
         else:
@@ -107,7 +107,7 @@ class ForwardKinematics:
         joint_rots: np.ndarray,
         apply_root_rotation: bool = False,
         root_translation: Optional[np.ndarray] = None,
-        return_type: FkReturnType = FkReturnType.positions,
+        return_type: FkReturnType = FkReturnType.POSITIONS,
     ) -> np.ndarray:  # TODO: clean up
         """
         Compute forward kinematics for the object initialized with the body offsets (global or local
@@ -144,10 +144,10 @@ class ForwardKinematics:
         batch_shape = orig_shape[:-2]
         frames_num = int(np.prod(batch_shape))
 
-        if return_type == FkReturnType.positions:
+        if return_type == FkReturnType.POSITIONS:
             # return 3d positions
             return_shape = (*batch_shape, self.num_keypoints, 3)
-        elif FkReturnType.positions:
+        elif FkReturnType.POSITIONS:
             # return rotation matrices
             return_shape = (*batch_shape, self.num_keypoints, 3, 3)
         else:
@@ -213,7 +213,7 @@ class ForwardKinematics:
             global_transf_mats[:, keyp_idx] = curr_transform_world
 
         # return 3d positions or 3x3 rotation matrices
-        if return_type == FkReturnType.positions:
+        if return_type == FkReturnType.POSITIONS:
             # The last column of the transformations contains keypoints positions
             keyp_positions = global_transf_mats[:, :, :3, 3]
             keyp_positions = np.reshape(keyp_positions, return_shape)
@@ -224,7 +224,7 @@ class ForwardKinematics:
 
             return keyp_positions
 
-        elif return_type == FkReturnType.rotations:
+        elif return_type == FkReturnType.ROTATIONS:
             # the north-west 3x3 matrix in the transformation matrix contains global rotations
             keyp_glob_rotations = global_transf_mats[:, :, :3, :3]
             keyp_glob_rotations = np.reshape(keyp_glob_rotations, return_shape)

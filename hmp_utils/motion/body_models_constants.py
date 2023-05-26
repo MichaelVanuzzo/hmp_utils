@@ -2,8 +2,8 @@ from enum import Enum, auto
 
 
 class BodyModelType(Enum):
-    smpl = auto()
-    h36m = auto()
+    SMPL = auto()
+    H36M = auto()
 
 
 class SmplConstants:
@@ -384,7 +384,7 @@ class SmplConstants:
     OFFSETS_ARE_RELATIVE = False
     # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
     LEFT_MUL = False
-    BODY_MODEL_TYPE = BodyModelType.smpl
+    BODY_MODEL_TYPE = BodyModelType.SMPL
 
 
 class H36MConstants:
@@ -534,4 +534,4 @@ class H36MConstants:
     OFFSETS_ARE_RELATIVE = True
     # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
     LEFT_MUL = True
-    BODY_MODEL_TYPE = BodyModelType.h36m
+    BODY_MODEL_TYPE = BodyModelType.H36M

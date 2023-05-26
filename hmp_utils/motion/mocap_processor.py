@@ -9,30 +9,39 @@ from typing import Optional, Union
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation
 
+from .. import BodyModelType
+
 
 class DownsampleMethod(Enum):
-    resample = auto()
-    decimate = auto()
-    slerp = auto()
-    none = auto()
+    RESAMPLE = auto()
+    DECIMATE = auto()
+    SLERP = auto()
+    NONE = auto()
 
 
-@dataclass
 class MocapData:
-    # rots: relative rotations of joints with shape (num_frames, num_joints, 3)
-    rots: np.ndarray
-    # trans: translation of root joint (num_frames, 1, 3)
-    trans: np.ndarray
-    original_framerate: float
-    framerate: float
-    gender: str
+    def __init__(
+        self,
+        rots: np.ndarray,
+        trans: np.ndarray,
+        original_framerate: float,
+        framerate: float,
+        gender: str,
+    ):
+        # rots: relative rotations of joints with shape (num_frames, num_joints, 3)
+        self.rots = rots
+        # trans: translation of root joint (num_frames, 1, 3)
+        self.trans = trans
+        self.original_framerate = original_framerate
+        self.framerate = framerate
+        self.gender = gender
 
 
 def downsample_motion(
     source_array: Union[np.ndarray, list],
     source_framerate: float,
     target_framerate: float,
-    method: "DownsampleMethod" = DownsampleMethod.slerp,
+    method: "DownsampleMethod" = DownsampleMethod.SLERP,
 ) -> Union[np.ndarray, None]:
     """
     Downsamples the given array to a target framerate using the specified method
@@ -55,7 +64,7 @@ def downsample_motion(
     if not isinstance(source_array, np.ndarray):
         source_array = np.array(source_array)
 
-    if method == DownsampleMethod.decimate:
+    if method == DownsampleMethod.DECIMATE:
         try:
             downsampling_factor = int(round(source_framerate / target_framerate))
             original_len = int(np.floor(source_array.shape[0] / downsampling_factor))
@@ -68,7 +77,7 @@ def downsample_motion(
             logging.error("Downsampling decimation failed")
             return None
 
-    elif method == DownsampleMethod.resample:
+    elif method == DownsampleMethod.RESAMPLE:
         source_num_frames = source_array.shape[0]
         downsampled_len_frames = int(
             source_num_frames * target_framerate / source_framerate
@@ -79,7 +88,7 @@ def downsample_motion(
         )
         return np.array(downsampled_array)
 
-    elif method == DownsampleMethod.slerp:
+    elif method == DownsampleMethod.SLERP:  # TODO: check if this is correct
         if source_array.shape[-1] != 3:
             raise Exception(
                 "When using slerp downsampling method, the provided source array "
@@ -130,137 +139,171 @@ def downsample_motion(
     raise Exception(f"Invalid downsampling method {method}")
 
 
-def can_decimate(source_framerate, target_framerate, tolerance=1e-3):
-    """
-    If the source framerate is a multiple of the target downsampled framerate
-    within the specified tolerance, the timeseries can be decimated (which needs an integer downsampling factor).
-    Otherwise we would need to resample the signal.
-    """
-    ratio = source_framerate / target_framerate
-    if abs(ratio - round(ratio)) < tolerance:
-        return True
-    else:
-        return False
-
-
-def load_mocap(
-    filepath,
-    keypoint_ids_to_load: Union[list, np.ndarray],
-    target_framerate: Optional[float] = None,
-    target_downsampling_method: DownsampleMethod = DownsampleMethod.slerp,
-    downsampling_tolerance=1e-3,
-) -> Union[MocapData, None]:
-    """
-    Assuming AMASS trajectories in axis-angle representation with 3 values per joint,
-    flattened with shape like (num_frames, num_keypoints*3).
-
-    The loaded trajectory will be downsampled to the target framerate, using slerp by default.
-    If no target_framerate is provided, the trajectories will not be downsampled.
-
-    ---
-    ### Args:
-    - `filepath` (str): filepath to the AMASS mocap .npz file
-    - `joint_ids_list` (list[int]): joint ids for which to return the trajectory
-    - `target_framerate` (float): the framerate to which the mocap trajectories should be downsampled to
-
-    ---
-    ### Returns:
-    - The downsampled mocap trajectory as the MocapData object.
-    - None if the target framerate is higher than the mocap framerate
-
-    ---
-    ### Raises:
-    Exception if the mocap file couldn't be loaded
-    """
-    data = np.load(filepath)
-
-    if data is None:
-        raise Exception(f"Could not load mocap file {filepath}")
-
-    if target_framerate is None:
-        target_framerate = float(data["mocap_framerate"])
-    elif target_framerate <= 0:
-        raise Exception(
-            f"Provide a valid downsampling framerate (was given {target_framerate})"
-        )
-
-    mocap_file_keys = ["poses", "trans", "mocap_framerate"]
-    if any([key not in data.files for key in mocap_file_keys]):
-        logging.debug(
-            f"KeyError: one of the mocap file keys {mocap_file_keys} was not found in mocap {filepath}"
-        )
-        return None
-
-    rot_trajectory = np.array(data["poses"])
-    trans_trajectory = np.array(data["trans"])
-    original_num_frames = rot_trajectory.shape[0]
-    original_framerate = float(data["mocap_framerate"])
-    gender = str(data["gender"])
-
-    # check if in the downsampled traj there will be at least one frame
-    num_frames_downsampled_traj = int(
-        original_num_frames * target_framerate / original_framerate
-    )
-    if num_frames_downsampled_traj < 1:
-        return None
-
-    if (
-        original_framerate < target_framerate
-        and abs(original_framerate - target_framerate) > downsampling_tolerance
+class MocapLoader:
+    def __init__(
+        self,
+        body_model_type: BodyModelType = BodyModelType.SMPL,
+        keypoint_ids_to_load: Optional[Union[list, np.ndarray]] = None,
+        target_framerate: Optional[float] = None,
+        downsampling_method: DownsampleMethod = DownsampleMethod.SLERP,
+        downsampling_tolerance=1e-3,
     ):
-        logging.warning(
-            f"Mocap sequence could not be loaded because target framerate {target_framerate} "
-            f"is higher than the mocap framerate {original_framerate} \n"
-            f"Mocap file: {os.path.basename(filepath)}"
+        """
+        The body model type is used to determine the dataset (human3.6m or AMASS).
+
+        The loaded trajectory will be downsampled to the target framerate, using slerp by default.
+        If no target_framerate is provided, the trajectories will not be downsampled.
+
+        ---
+        ### Args:
+        - `body_model_type` (BodyModelType): body model type to use for loading the mocap data
+        - `keypoint_ids_to_load` (list or np.ndarray): list of indices of the keypoints to load
+        - `target_framerate` (float): target framerate of the loaded mocap data
+        - `downsampling_method` (DownsampleMethod): downsampling method to use
+        - `downsampling_tolerance` (float): tolerance for downsampling
+        """
+        self.body_model_type = body_model_type
+
+        if not isinstance(keypoint_ids_to_load, np.ndarray):
+            keypoint_ids_to_load = np.array(keypoint_ids_to_load)
+        self.keypoint_ids_to_load = keypoint_ids_to_load
+
+        if self.target_framerate > 0:
+            self.target_framerate = target_framerate
+        else:
+            raise Exception(
+                f"Provide a valid downsampling framerate (was given {target_framerate})"
+            )
+
+        self.downsampling_method = downsampling_method
+        self.downsampling_tolerance = downsampling_tolerance
+
+    def load_mocap(
+        self,
+        file_path,
+    ) -> Union[MocapData, None]:
+        """
+        Assuming trajectories in axis-angle representation with 3 values per joint,
+        flattened with shape like (num_frames, num_keypoints*3).
+
+        ---
+        ### Args:
+        - `filepath` (str): filepath to the mocap file
+
+        ---
+        ### Returns:
+        - The downsampled mocap trajectory as the MocapData object.
+        - None if the target framerate is higher than the mocap framerate
+
+        ---
+        ### Raises:
+        Exception if the mocap file couldn't be loaded
+        """
+
+        if self.body_model_type == BodyModelType.SMPL:
+            mocap = self.__load_smpl_mocap(file_path)
+        elif self.body_model_type == BodyModelType.H36M:
+            mocap = self.__load_h36m_mocap(file_path)
+
+        return mocap
+
+    def __can_decimate(source_framerate, target_framerate, tolerance=1e-3):
+        """
+        If the source framerate is a multiple of the target downsampled framerate
+        within the specified tolerance, the timeseries can be decimated (which needs an integer downsampling factor).
+        Otherwise we would need to resample the signal.
+        """
+        ratio = source_framerate / target_framerate
+        return abs(ratio - round(ratio)) < tolerance
+
+    def __load_h36m_mocap(self, file_path):
+        pass  # TODO
+
+    def __load_smpl_mocap(self, file_path):
+        data = np.load(file_path)
+
+        if data is None:
+            raise Exception(f"Could not load mocap file {file_path}")
+
+        smpl_keys = ["poses", "trans", "mocap_framerate", "gender"]
+        if any([key not in data.files for key in smpl_keys]):
+            raise Exception(
+                f"KeyError: {smpl_keys} smpl key was not found in mocap {file_path}"
+            )
+
+        if self.target_framerate is None:
+            target_framerate = float(data["mocap_framerate"])
+        else:
+            target_framerate = self.target_framerate
+
+        rot_trajectory = np.array(data["poses"])
+        trans_trajectory = np.array(data["trans"])
+
+        original_framerate = float(data["mocap_framerate"])
+        original_num_frames = rot_trajectory.shape[0]
+
+        gender = str(data["gender"])
+
+        # check if in the downsampled traj there will be at least one frame
+        if int(round(original_num_frames * target_framerate / original_framerate) <= 1):
+            return None
+
+        framerate_difference = abs(original_framerate - target_framerate)
+        if (
+            original_framerate < target_framerate
+            and framerate_difference > self.downsampling_tolerance
+        ):
+            raise Exception(
+                f"Mocap sequence could not be loaded because target framerate {target_framerate} "
+                f"is higher than the mocap framerate {original_framerate} \n"
+                f"Mocap file: {os.path.basename(file_path)}"
+            )
+
+        # reshape to (num_frames, num_joints, 3) or (num_frames, 1, 3) for translation
+        final_shape = (original_num_frames, -1, 3)
+        trans_trajectory = np.reshape(trans_trajectory, final_shape)
+        rot_trajectory = np.reshape(rot_trajectory, final_shape)
+
+        # select the components of the angle-axis representation to extract from the 'pose' array
+        rot_trajectory = rot_trajectory[:, self.keypoint_ids_to_load, :]
+
+        # don't downsample
+        if framerate_difference <= self.downsampling_tolerance:
+            return MocapData(
+                rot_trajectory,
+                trans_trajectory,
+                original_framerate,
+                original_framerate,
+                gender,
+            )
+
+        # downsample to the target framerate
+        if (
+            self.downsampling_method == DownsampleMethod.DECIMATE
+            and not self.__can_decimate(original_framerate, target_framerate)
+        ):
+            downsample_method = DownsampleMethod.SLERP
+        else:
+            downsample_method = self.downsampling_method
+
+        rot_trajectory = downsample_motion(
+            rot_trajectory, original_framerate, target_framerate, downsample_method
         )
-        return None
+        trans_trajectory = downsample_motion(
+            trans_trajectory, original_framerate, target_framerate, downsample_method
+        )
 
-    # select the components of the angle-axis representation to extract from the 'pose' array
-    rot_trajectory = np.reshape(rot_trajectory, newshape=(original_num_frames, -1, 3))
-    rot_trajectory = rot_trajectory[:, keypoint_ids_to_load]
+        if rot_trajectory is None or trans_trajectory is None:
+            return None
 
-    # reshape to (num_frames, num_joints, 3) or (num_frames, 1, 3) for translation
-    final_shape = (original_num_frames, -1, 3)
-    rot_trajectory = np.reshape(rot_trajectory, final_shape)
-    trans_trajectory = np.reshape(trans_trajectory, final_shape)
+        downsampled_framerate = (
+            original_framerate * len(trans_trajectory) / original_num_frames
+        )
 
-    # don't downsample
-    if abs(target_framerate - original_framerate) <= downsampling_tolerance:
         return MocapData(
             rot_trajectory,
             trans_trajectory,
             original_framerate,
-            original_framerate,
+            downsampled_framerate,
             gender,
         )
-
-    # downsample to the target framerate
-    if target_downsampling_method == DownsampleMethod.decimate:
-        if can_decimate(original_framerate, target_framerate):
-            downsample_method = DownsampleMethod.decimate
-        else:
-            downsample_method = DownsampleMethod.resample
-    else:
-        downsample_method = target_downsampling_method
-
-    rot_trajectory = downsample_motion(
-        rot_trajectory, original_framerate, target_framerate, downsample_method
-    )
-    trans_trajectory = downsample_motion(
-        trans_trajectory, original_framerate, target_framerate, downsample_method
-    )
-
-    if rot_trajectory is None or trans_trajectory is None:
-        return None
-
-    downsampled_framerate = (
-        original_framerate * len(trans_trajectory) / original_num_frames
-    )
-
-    return MocapData(
-        rot_trajectory,
-        trans_trajectory,
-        original_framerate,
-        downsampled_framerate,
-        gender,
-    )

@@ -1,6 +1,5 @@
 import numpy as np
 from typing import Union, Optional
-from enum import Enum, auto
 
 from .. import RotConvert
 from .. import ForwardKinematics, FkReturnType
@@ -159,10 +158,10 @@ class MetricsProcessor:
                 )
 
             predictions = f_kinematics_processor.compute_fk(
-                self.predictions_aa, return_type=FkReturnType.rotations
+                self.predictions_aa, return_type=FkReturnType.ROTATIONS
             )
             targets = f_kinematics_processor.compute_fk(
-                self.targets_aa, return_type=FkReturnType.rotations
+                self.targets_aa, return_type=FkReturnType.ROTATIONS
             )
         else:
             # use local rotations
@@ -229,10 +228,10 @@ class MetricsProcessor:
 
         # convert angles into positions
         predictions_pos = f_kinematics_processor.compute_fk(
-            self.predictions_aa, return_type=FkReturnType.positions
+            self.predictions_aa, return_type=FkReturnType.POSITIONS
         )
         targets_pos = f_kinematics_processor.compute_fk(
-            self.targets_aa, return_type=FkReturnType.positions
+            self.targets_aa, return_type=FkReturnType.POSITIONS
         )
 
         # remove extra dimensions if present
