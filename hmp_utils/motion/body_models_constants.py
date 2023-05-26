@@ -5,8 +5,23 @@ class BodyModelType(Enum):
     SMPL = auto()
     H36M = auto()
 
+class BodyConstants:
+    """General body constants class"""
+    NUM_KEYPOINTS:int
+    KEYPOINTS:"list[int]"
+    PARENTS:"list[int]"
+    CHILDS:"list[int]"
+    END_EFFECTORS:"list[int]"
+    MAJOR_JOINTS:"list[int]"
+    JOINTS_TO_IGNORE:"list[int]"
+    JOINT_NAMES:"list[str]"
+    OFFSETS:list
+    OFFSETS_ARE_RELATIVE:bool
+    LEFT_MUL:bool
+    BODY_MODEL_TYPE:BodyModelType
 
-class SmplConstants:
+
+class SmplConstants(BodyConstants):
     # ---------------SMPL---------------
     # Keypoints are all the joints and end effectors combined
     NUM_KEYPOINTS = 24
@@ -307,7 +322,7 @@ class SmplConstants:
 
     # The offsets are vectors that map the position of body joints when the body is in the
     # T-pose standard SMPL pose, relative to the origin [0,0,0] #TODO: check
-    OFFSETS = {
+    OFFSETS_BY_GENDER = {
         "neutral": [
             [-1.79505953e-03, -2.23333446e-01, 2.82191255e-02],
             [6.77246757e-02, -3.14739671e-01, 2.14037877e-02],
@@ -387,6 +402,7 @@ class SmplConstants:
             [-7.35578759e-01, 2.05180646e-01, -5.39352281e-02],
         ],
     }
+    OFFSETS = OFFSETS_BY_GENDER['neutral']
     # OFFSETS_ARE_RELATIVE: indicates that offsets are global, so referred to the root joint
     OFFSETS_ARE_RELATIVE = False
     # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
@@ -394,7 +410,7 @@ class SmplConstants:
     BODY_MODEL_TYPE = BodyModelType.SMPL
 
 
-class H36MConstants:
+class H36MConstants(BodyConstants):
     # --------------Human3.6M---------------
     # Keypoints are all the joints and end effectors combined
     # Inspired by SLP https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L25
