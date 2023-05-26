@@ -168,12 +168,15 @@ class MocapLoader:
             keypoint_ids_to_load = np.array(keypoint_ids_to_load)
         self.keypoint_ids_to_load = keypoint_ids_to_load
 
-        if self.target_framerate > 0:
-            self.target_framerate = target_framerate
+        if target_framerate == None:
+            self.target_framerate = target_framerate  
         else:
-            raise Exception(
-                f"Provide a valid downsampling framerate (was given {target_framerate})"
-            )
+            if target_framerate > 0:
+                self.target_framerate = target_framerate
+            else:
+                raise Exception(
+                    f"Provide a valid downsampling framerate (was given {target_framerate})"
+                )
 
         self.downsampling_method = downsampling_method
         self.downsampling_tolerance = downsampling_tolerance
@@ -217,7 +220,83 @@ class MocapLoader:
         return abs(ratio - round(ratio)) < tolerance
 
     def __load_h36m_mocap(self, file_path):
-        pass  # TODO
+        data = np.loadtxt(file_path, delimiter=',')
+        
+        if data is None:
+            raise Exception(f"Could not load mocap file {file_path}")
+        
+        if self.target_framerate is None:
+            target_framerate = float(50)
+        else:
+            target_framerate = self.target_framerate
+
+        rot_trajectory = np.array(data[:,3:])
+        trans_trajectory = np.array(data[:,:3])
+
+        original_framerate = float(50)
+        original_num_frames = rot_trajectory.shape[0]
+
+        # check if in the downsampled traj there will be at least one frame
+        if int(round(original_num_frames * target_framerate / original_framerate) <= 1):
+            return None
+        
+        framerate_difference = abs(original_framerate - target_framerate)
+        if (
+            original_framerate < target_framerate
+            and framerate_difference > self.downsampling_tolerance
+        ):
+            raise Exception(
+                f"Mocap sequence could not be loaded because target framerate {target_framerate} "
+                f"is higher than the mocap framerate {original_framerate} \n"
+                f"Mocap file: {os.path.basename(file_path)}"
+            )
+        
+        # reshape to (num_frames, num_joints, 3) or (num_frames, 1, 3) for translation
+        final_shape = (original_num_frames, -1, 3)
+        trans_trajectory = np.reshape(trans_trajectory, final_shape)
+        rot_trajectory = np.reshape(rot_trajectory, final_shape)
+
+        # select the components of the angle-axis representation to extract from the 'pose' array
+        rot_trajectory = rot_trajectory[:, self.keypoint_ids_to_load, :]
+
+        # don't downsample
+        if framerate_difference <= self.downsampling_tolerance:
+            return MocapData(
+                rot_trajectory,
+                trans_trajectory,
+                original_framerate,
+                original_framerate,
+            )
+        
+        # downsample to the target framerate
+        if (
+            self.downsampling_method == DownsampleMethod.DECIMATE
+            and not self.__can_decimate(original_framerate, target_framerate)
+        ):
+            downsample_method = DownsampleMethod.SLERP
+        else:
+            downsample_method = self.downsampling_method
+
+        rot_trajectory = downsample_motion(
+            rot_trajectory, original_framerate, target_framerate, downsample_method
+        )
+        trans_trajectory = downsample_motion(
+            trans_trajectory, original_framerate, target_framerate, downsample_method
+        )
+
+        if rot_trajectory is None or trans_trajectory is None:
+            return None
+
+        downsampled_framerate = (
+            original_framerate * len(trans_trajectory) / original_num_frames
+        )
+
+        return MocapData(
+            rot_trajectory,
+            trans_trajectory,
+            original_framerate,
+            downsampled_framerate,
+        )
 
     def __load_smpl_mocap(self, file_path):
         data = np.load(file_path)

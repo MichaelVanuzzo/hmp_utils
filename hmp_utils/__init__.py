@@ -3,3 +3,4 @@ from .motion.body_models_constants import H36MConstants, SmplConstants, BodyMode
 from .motion.kinematics import ForwardKinematics, FkReturnType
 from .metrics.body_pose_metrics import MetricsPostProcessor, MetricsProcessor
 from .metrics.evaluation_utils import get_h36m_evaluation_frames
+from .motion.mocap_processor import MocapLoader, MocapData
