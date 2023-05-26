@@ -38,13 +38,16 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def get_logger(level=logging.INFO) -> "logging.Logger":
-    # create logger with 'My_app'
+def custom_logger(logging_level=None) -> logging.Logger:
+    # create logger
     logger = logging.getLogger()
-    logger.setLevel(level)
-    # create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(level)
+
+    if logging_level is not None:
+        logger.setLevel(logging_level)
+        ch.setLevel(logging_level)
+
+    # create console handler with a higher log level
     ch.setFormatter(CustomFormatter())
     logger.addHandler(ch)
 
