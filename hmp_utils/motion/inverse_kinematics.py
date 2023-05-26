@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Union as U
 from typing import Optional as O
-from hmp_utils.common.rot_convert import RotConvert
-from hmp_utils.motion.body_models_constants import SmplConstants, H36MConstants, BodyConstants
+from hmp_utils import RotConvert
+from hmp_utils import SmplConstants, H36MConstants, BodyConstants
 
 class IK:
 
