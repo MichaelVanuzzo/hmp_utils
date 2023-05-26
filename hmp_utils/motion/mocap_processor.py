@@ -133,7 +133,7 @@ def downsample_motion(
         return_shape = (downsampled_len_frames, *original_shape[1:])
         return np.reshape(interpolated_rotations, return_shape)
 
-    elif method == DownsampleMethod.none:
+    elif method == DownsampleMethod.NONE:
         return source_array
 
     raise Exception(f"Invalid downsampling method {method}")
@@ -210,6 +210,7 @@ class MocapLoader:
 
         return mocap
 
+    @staticmethod
     def __can_decimate(source_framerate, target_framerate, tolerance=1e-3):
         """
         If the source framerate is a multiple of the target downsampled framerate
