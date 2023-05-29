@@ -12,9 +12,11 @@ class IK:
                   parents: O[U[np.ndarray, list]] = None,
                   childs: O[U[np.ndarray, list]] = None,
                   offsets: O[U[np.ndarray, list]] = None,
+                  keypoints: O[U[np.ndarray, list]] = None,
                   joints_to_ignore: O[U[np.ndarray, list]] = None,
                   offsets_are_relative: O[bool] = None,
-                  left_mul: O[bool] = None
+                  left_mul: O[bool] = None,
+                  missing_joints: O[U[np.ndarray, list]] = []
                   ) -> np.ndarray:
         """
         Calculate the angle-axis notation for a given body pose starting from the absolute 
@@ -24,13 +26,14 @@ class IK:
         ### Args:
         - xyz_positions (ndarray): 3d absolute positions of the keypoints. Shape=(...,num_keypoints,3)
 
-        ### Optional Args: 
+        ### Automatic Args: 
         (If not specified they are automatically defined based on body_model_type)
         - body_model_type (BodyModelType): used to define missing parameters. Actually supported
         body models are 'BodyModelType.smpl' and 'BodyModelType.h36m'
         - parents (list): list of the parents of the joints
         - childs (list): used to find the child of a joint, -1 if there is no child or more then one
         - offsets (list): lenght of the bones in the body
+        - keypoints (list): all the keypoints in the model, both present and missing in xyz_positions
         - joints_to_ignore (list): joints that must not be calculated, because they are not
         present or because they are end effectors or for other reasons. The return value for these
         joints is [0,0,0]
@@ -38,6 +41,12 @@ class IK:
         parent joint, False if it's global
         - left_mul (bool): True if the order of matrix multiplication is the same as the one used on
         Human3.6m
+
+        ### Other Args:
+        (Not automatically set)
+        - missing_joints (list): joints that aren't present in xyz_positions. The return value for these
+        joints is [0,0,0]. Works only if offsets_are_relative==True and all the missing joints parents are 
+        also missing!!!
 
         ---
         ### Returns:
@@ -57,21 +66,45 @@ class IK:
         parents = parents or body_constants.PARENTS
         childs = childs or body_constants.CHILDS
         offsets = offsets or body_constants.OFFSETS
+        keypoints = keypoints or body_constants.KEYPOINTS
         joints_to_ignore = joints_to_ignore or body_constants.JOINTS_TO_IGNORE
         offsets_are_relative = offsets_are_relative or body_constants.OFFSETS_ARE_RELATIVE
         left_mul = left_mul or body_constants.LEFT_MUL
 
         if body_constants==None:
-            if None in [parents,childs,offsets,
+            if None in [parents,childs,offsets,keypoints,
                         joints_to_ignore,offsets_are_relative,left_mul]:
                 raise Exception(f"Please specify a body model type or all the other parameters")
         elif body_constants not in [H36MConstants, SmplConstants]:
             raise Exception(f"Body constants type not supported")
         
-        # Calculate shape related parameters and reshape to (frame,num_keypoints,3)
-        num_keypoints=original_shape[-2]
-        xyz_positions=np.reshape(xyz_positions,(-1,num_keypoints,3))
-        frames=xyz_positions.shape[-3]
+        
+        # Calculate present_num_keypoints
+        present_num_keypoints=original_shape[-2]
+
+        # Reshape to (frame,present_num_keypoints,3)
+        xyz_positions=np.reshape(xyz_positions,(-1,present_num_keypoints,3))
+        new_shape=xyz_positions.shape
+
+        # Calculate total number of frames
+        frames=xyz_positions.shape[0]
+
+        # Calculate total number of keypoints
+        num_keypoints=len(keypoints)
+
+        # Update new_shape and return_shape(because of missing joints)
+        new_shape=(new_shape[0],num_keypoints,new_shape[2])
+        return_shape=(*original_shape[:-2],num_keypoints,original_shape[-1])
+
+        # Add zeros in the position of the missing joints to get the correct shape
+        xyz_temp=np.zeros(new_shape)
+        shift_position=0
+        for joint in keypoints:
+            if joint in missing_joints:
+                shift_position+=1
+            else:
+                xyz_temp[:,joint]=xyz_positions[:,joint-shift_position]
+        xyz_positions=xyz_temp
 
         # Initialize tensors
         aa=np.zeros((frames,num_keypoints,3))
@@ -80,6 +113,15 @@ class IK:
         # Joints > 0
         for joint in range (1,num_keypoints):
             if joint in joints_to_ignore:
+                continue
+            if joint in missing_joints:
+                if offsets_are_relative:
+                    # here it should compute the forward kinematic up to the joint, using [0,0,0]
+                    # for the current joint expmap, to find the keypoint absolute position
+                    raise Exception(f"Not implemented yet")
+                else:
+                    # works only if all the missing joints parents (and parents of ...) are also missing
+                    xyz_positions[:,joint]=offsets[joint]
                 continue
 
             # find parent and child joint, exit if there is no child
@@ -125,4 +167,4 @@ class IK:
                 rot_mat[:,joint]=np.matmul(rot_mat_temp,rot_mat[:,parent_joint])
             else:
                 rot_mat[:,joint]=np.matmul(rot_mat[:,parent_joint],rot_mat_temp)
-        return np.reshape(aa,original_shape)
+        return np.reshape(aa,return_shape)
