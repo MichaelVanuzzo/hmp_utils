@@ -5,3 +5,6 @@ hmp_utils.egg-info
 __pycache__
 .ipynb_checkpoints
 .vscode
+
+# File extensions
+*.pyc
