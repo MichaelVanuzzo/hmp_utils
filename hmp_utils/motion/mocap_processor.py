@@ -267,6 +267,7 @@ class MocapLoader:
                 trans_trajectory,
                 original_framerate,
                 original_framerate,
+                gender="neutral"
             )
         
         # downsample to the target framerate
@@ -297,6 +298,7 @@ class MocapLoader:
             trans_trajectory,
             original_framerate,
             downsampled_framerate,
+            gender="neutral"
         )
 
     def __load_smpl_mocap(self, file_path):
