@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from typing import Optional, Union
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation
-
-from .. import BodyModelType
+from hmp_utils import RotConvert
+from .. import BodyModelType, SmplConstants, H36MConstants
 
 
 class DownsampleMethod(Enum):
@@ -169,7 +169,7 @@ class MocapLoader:
         self.keypoint_ids_to_load = keypoint_ids_to_load
 
         if target_framerate == None:
-            self.target_framerate = target_framerate  
+            self.target_framerate = target_framerate
         else:
             if target_framerate > 0:
                 self.target_framerate = target_framerate
@@ -221,18 +221,18 @@ class MocapLoader:
         return abs(ratio - round(ratio)) < tolerance
 
     def __load_h36m_mocap(self, file_path):
-        data = np.loadtxt(file_path, delimiter=',')
-        
+        data = np.loadtxt(file_path, delimiter=",")
+
         if data is None:
             raise Exception(f"Could not load mocap file {file_path}")
-        
+
         if self.target_framerate is None:
             target_framerate = float(50)
         else:
             target_framerate = self.target_framerate
 
-        rot_trajectory = np.array(data[:,3:])
-        trans_trajectory = np.array(data[:,:3])
+        rot_trajectory = np.array(data[:, 3:])
+        trans_trajectory = np.array(data[:, :3])
 
         original_framerate = float(50)
         original_num_frames = rot_trajectory.shape[0]
@@ -240,7 +240,7 @@ class MocapLoader:
         # check if in the downsampled traj there will be at least one frame
         if int(round(original_num_frames * target_framerate / original_framerate) <= 1):
             return None
-        
+
         framerate_difference = abs(original_framerate - target_framerate)
         if (
             original_framerate < target_framerate
@@ -251,7 +251,7 @@ class MocapLoader:
                 f"is higher than the mocap framerate {original_framerate} \n"
                 f"Mocap file: {os.path.basename(file_path)}"
             )
-        
+
         # reshape to (num_frames, num_joints, 3) or (num_frames, 1, 3) for translation
         final_shape = (original_num_frames, -1, 3)
         trans_trajectory = np.reshape(trans_trajectory, final_shape)
@@ -269,7 +269,7 @@ class MocapLoader:
                 original_framerate,
                 gender="neutral"
             )
-        
+
         # downsample to the target framerate
         if (
             self.downsampling_method == DownsampleMethod.DECIMATE
@@ -389,3 +389,162 @@ class MocapLoader:
             downsampled_framerate,
             gender,
         )
+
+
+class Amass2HumanConvert:
+    def __init__(
+        self,
+    ):
+        # human-smpl keypoints correspondence
+        self.human_to_amass_kp = {
+            0: 0,
+            1: 2,
+            2: 5,
+            3: 8,
+            4: 11,
+            6: 1,
+            7: 4,
+            8: 7,
+            9: 10,
+            11: 3,
+            12: 6,
+            13: 9,
+            14: 12,
+            15: 15,
+            16: 13,
+            17: 16,
+            18: 18,
+            19: 20,
+            22: 22,
+            24: 14,
+            25: 17,
+            26: 19,
+            27: 21,
+            30: 23,
+        }
+
+        # no rotations for some joints
+        self.human_to_skip = [4, 5, 9, 10, 15, 20, 21, 22, 23, 28, 29, 30, 31]
+
+        # compute rotation matricex
+        self.aligning_rotmats = self.compute_alining_rotmats()
+
+    def compute_alining_rotmats(self):
+        # amass relative offsets
+        amass_offsets = np.reshape(np.array(SmplConstants.OFFSETS), (-1, 3))
+        amass_relative_offsets = amass_offsets
+        amass_relative_offsets[1:] = (
+            amass_offsets[1:] - amass_offsets[SmplConstants.PARENTS[1:]]
+        )
+
+        # human relative offsets
+        human_relative_offsets = np.reshape(np.array(H36MConstants.OFFSETS), (-1, 3))
+        human_relative_offsets_ = np.reshape(np.array(H36MConstants.OFFSETS), (-1, 3))
+
+        rotations_chain = [np.eye(3) for _ in range(len(human_relative_offsets))]
+        aligning_rotmats = [np.eye(3) for _ in range(len(human_relative_offsets))]
+
+        # compute aligning rotation matrices
+        for kp in range(1, len(human_relative_offsets)):
+            if kp in self.human_to_skip:
+                pass
+            else:
+                kp_parent = H36MConstants.PARENTS[kp]
+                # in most of the cases the child kp is kp+1 (does not work for hands)
+                kp_child = kp + 1
+                if kp == 19:
+                    kp_child = 22
+                elif kp == 27:
+                    kp_child = 30
+
+                # apply parent rotations also to the current link
+                human_relative_offsets_[kp_child] = np.matmul(
+                    rotations_chain[kp_parent], human_relative_offsets[kp_child]
+                )
+
+                # compute aligning rotmat
+                amass_link = amass_relative_offsets[self.human_to_amass_kp[kp_child]]
+                human_link = human_relative_offsets_[kp_child]
+                # if human link 12, align the spine with amass link 0-6
+                if kp == 12:
+                    amass_link = amass_offsets[6] - amass_offsets[0]
+
+                aligning_rotmats[kp] = self.rotation_matrix_from_vectors(
+                    human_link, amass_link
+                )
+
+                # update rotations chain
+                rotations_chain[kp] = np.matmul(
+                    aligning_rotmats[kp], rotations_chain[kp_parent]
+                )
+
+                return aligning_rotmats
+
+    def amass_to_h36m_frame(self, amass_motion):
+        amass_motion_rotmat = RotConvert.aa2rotmat(amass_motion)
+        h36m_frame = np.zeros((32, 3))
+
+        for kp in range(len(h36m_frame)):
+            if kp in self.human_to_skip:
+                pass
+            else:
+                h36m_frame[kp] = -RotConvert.rotmat2aa(
+                    np.matmul(
+                        amass_motion_rotmat[self.human_to_amass_kp[kp]],
+                        self.aligning_rotmats[kp],
+                    )
+                )
+
+                # need to swap axes
+                if kp in [16, 17, 18, 19]:
+                    temp = -RotConvert.rotmat2aa(
+                        np.matmul(
+                            amass_motion_rotmat[self.human_to_amass_kp[kp]],
+                            self.aligning_rotmats[kp],
+                        )
+                    )
+                    h36m_frame[kp][2] = temp[2]
+                    h36m_frame[kp][0] = -temp[1]
+                    h36m_frame[kp][1] = temp[0]
+
+                if kp in [24, 25, 26, 27]:
+                    temp = -RotConvert.rotmat2aa(
+                        np.matmul(
+                            amass_motion_rotmat[self.human_to_amass_kp[kp]],
+                            self.aligning_rotmats[kp],
+                        )
+                    )
+                    h36m_frame[kp][2] = temp[2]
+                    h36m_frame[kp][0] = temp[1]
+                    h36m_frame[kp][1] = -temp[0]
+
+        return h36m_frame
+
+    def amass_to_h36m_mocap(self, amass_mocap):
+        # return np.apply_along_axis(self.amass_to_h36m_frame, axis=0, arr=amass_mocap)
+        num_frames = amass_mocap.shape[0]
+        human_motion_full = np.zeros((num_frames, 32, 3))
+        for frame in range(num_frames):
+            human_motion_full[frame] = self.amass_to_h36m_frame(
+                amass_motion=amass_mocap[frame]
+            )
+
+        return human_motion_full
+
+    @staticmethod
+    def rotation_matrix_from_vectors(vec1, vec2):
+        """Find the rotation matrix that aligns vec1 to vec2
+        :param vec1: A 3d "source" vector
+        :param vec2: A 3d "destination" vector
+        :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+        """
+        a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (
+            vec2 / np.linalg.norm(vec2)
+        ).reshape(3)
+        v = np.cross(a, b)
+        c = np.dot(a, b)
+        s = np.linalg.norm(v)
+        kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s**2))
+
+        return rotation_matrix
