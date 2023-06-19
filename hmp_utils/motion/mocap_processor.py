@@ -3,7 +3,6 @@ import logging
 import numpy as np
 from scipy import signal
 from enum import Enum, auto
-from dataclasses import dataclass
 from typing import Optional, Union
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation

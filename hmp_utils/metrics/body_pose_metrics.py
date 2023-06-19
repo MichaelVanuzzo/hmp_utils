@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 from typing import Union, Optional
 
 from .. import RotConvert
@@ -362,3 +363,155 @@ class MetricsPostProcessor:
         if frame < 0:
             return len(self.errors + frame)
         return frame
+
+
+class SpectrumMetricsProcessor:
+    """
+    Compute metrics on the power spectrum.
+    """
+
+    @staticmethod
+    def power_spectrum(
+        seq_t,
+        normalize: bool = False,
+    ) -> np.ndarray:
+        """
+        Compute the power spectrum of the given sequence of joint angles.
+        - For amass (60 fps): seq_t = seq_t[:, :, 0:-1:12, :] -> 5 fps #TODO
+
+        Args:
+        seq_t -> (..., seq_len, n_joints, 3)
+        normalize -> whether to normalize the power spectrum
+
+        Returns:
+            (seq_len, n_joints, 3)
+        """
+        feature_size = seq_t.shape[-1]
+        n_joints = seq_t.shape[-2]
+        seq_len = seq_t.shape[-3]
+
+        seq_t = np.reshape(
+            seq_t, [-1, seq_len, n_joints * feature_size]
+        )  # (batch, seq_len, n_joints*3)
+
+        # calculate power spectrum
+        seq_fft = np.fft.fft(seq_t, axis=1)  # (batch, seq_len, n_joints*3)
+        seq_ps = np.abs(seq_fft) ** 2  # (batch, seq_len, n_joints*3)
+
+        seq_ps_global = seq_ps.sum(axis=0)  # (seq_len, n_joints*3)
+
+        if normalize:
+            norm_values = seq_ps_global.sum(axis=0, keepdims=True)  # (1, n_joints*3)
+            norm_values = np.where(
+                norm_values == 0, 1, norm_values
+            )  # avoid division by 0
+            seq_ps_global /= norm_values  # (seq_len, n_joints*3)
+
+        return np.reshape(
+            seq_ps_global, (-1, n_joints, feature_size)
+        )  # (seq_len, n_joints, 3)
+
+    def ps_entropy(self, seq, is_t_seq=False) -> np.ndarray:
+        """
+        Compute the entropy of the power spectrum.
+
+        Args:
+            seq -> (..., seq_len, n_joints, 3)
+            is_t_seq -> whether the sequence is in time domain or not
+
+        Returns:
+            (n_joints, 3)
+        """
+        if is_t_seq:
+            seq_ps = self.power_spectrum(seq)  # (seq_len, n_joints, 3)
+        else:
+            seq_ps = seq  # (seq_len, n_joints, 3)
+
+        return stats.entropy(seq_ps, base=2, axis=0)  # (n_joints, 3)
+
+    def kl_divergence(self, seq_from, seq_to, is_t_seq=False) -> np.ndarray:
+        """
+        Compute the KL(Kullback–Leibler) divergence between two power spectrums.
+
+        Args:
+            seq_from -> (..., seq_len, n_joints, 3)
+            seq_to -> (..., seq_len, n_joints, 3)
+            is_t_seq -> whether the sequences are in time domain or not
+
+        Returns:
+            (n_joints, 3)
+        """
+
+        if is_t_seq:
+            seq_ps_from = self.power_spectrum(seq_from)  # (seq_len, n_joints, 3)
+            seq_ps_to = self.power_spectrum(seq_to)  # (seq_len, n_joints, 3)
+        else:
+            seq_ps_from = seq_from  # (seq_len, n_joints, 3)
+            seq_ps_to = seq_to  # (seq_len, n_joints, 3)
+
+        return stats.entropy(
+            pk=seq_ps_from, qk=seq_ps_to, base=2, axis=0
+        )  # (n_joints, 3)
+
+    def js_divergence(self, seq_g, seq_h, is_t_seq=False) -> np.ndarray:
+        """
+        Compute the JS (Jensen-Shannon) divergence between two power spectrums.
+
+        Args:
+            seq_from -> (..., seq_len, n_joints, 3)
+            seq_to -> (..., seq_len, n_joints, 3)
+            is_t_seq -> whether the sequences are in time domain or not
+
+        Returns:
+            (n_joints, 3)
+        """
+
+        if is_t_seq:
+            seq_ps_g = self.power_spectrum(seq_g)  # (seq_len, n_joints, 3)
+            seq_ps_h = self.power_spectrum(seq_h)  # (seq_len, n_joints, 3)
+        else:
+            seq_ps_g = seq_g  # (seq_len, n_joints, 3)
+            seq_ps_h = seq_h  # (seq_len, n_joints, 3)
+
+        jd_divergence = (
+            self.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2) / 2
+            + self.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2) / 2
+        )
+
+        return jd_divergence  # (n_joints, 3)
+
+    def wasserstein_distance(self, seq_u, seq_v, is_t_seq=False) -> np.ndarray:
+        """
+        Compute the Wasserstein distance between two power spectrums.
+
+        Args:
+            seq_u -> (..., seq_len, n_joints, 3)
+            seq_v -> (..., seq_len, n_joints, 3)
+            is_t_seq -> whether the sequences are in time domain or not
+
+        Returns:
+            (n_joints, 3)
+        """
+
+        feature_size = seq_u.shape[-1]
+        n_joints = seq_u.shape[-2]
+
+        if is_t_seq:
+            seq_ps_u = self.power_spectrum(
+                seq_u, normalize=True
+            )  # (seq_len, n_joints, 3)
+            seq_ps_v = self.power_spectrum(
+                seq_v, normalize=True
+            )  # (seq_len, n_joints, 3)
+        else:
+            seq_ps_u = seq_u  # (seq_len, n_joints, 3)
+            seq_ps_v = seq_v  # (seq_len, n_joints, 3)
+
+        w_distance = np.zeros((n_joints, feature_size))  # (n_joints, 3)
+        for i in range(n_joints):
+            for j in range(feature_size):
+                w_distance[i][j] = stats.wasserstein_distance(
+                    seq_ps_u[:, i, j], seq_ps_v[:, i, j]
+                )
+
+        return w_distance  # (n_joints, 3)
