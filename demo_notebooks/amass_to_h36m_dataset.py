@@ -25,7 +25,7 @@ for dataset in datasets:
         mocap = mocap_loader.load_mocap(action_path)
         assert mocap is not None
         # Convert Amass mocap to Human3.6m
-        converted_mocap = converter.amass_to_h36m_mocap_fast(mocap.rots,mocap.trans)
+        converted_mocap = converter.amass_to_h36m_mocap(mocap.rots,mocap.trans)
         # Save to txt
         relative_path = action_path.split(amass_path)[-1]
         save_path = os.path.join(save_dir, relative_path)

@@ -478,64 +478,6 @@ class Amass2HumanConvert:
 
         return aligning_rotmats
 
-    def amass_to_h36m_frame(self, amass_rots, amass_trans=None):
-        if amass_trans is None:
-            amass_trans = np.zeros((1, 3))
-
-        amass_motion_rotmat = RotConvert.aa2rotmat(amass_rots)
-        h36m_frame = np.zeros((32, 3))
-
-        for kp in range(1, len(h36m_frame)):
-            if kp in self.human_to_skip:
-                pass
-            else:
-                h36m_frame[kp] = -RotConvert.rotmat2aa(
-                    np.matmul(
-                        amass_motion_rotmat[self.human_to_amass_kp[kp]],
-                        self.aligning_rotmats[kp],
-                    )
-                )
-
-                # need to swap axes
-                if kp in [16, 17, 18, 19]:
-                    temp = -RotConvert.rotmat2aa(
-                        np.matmul(
-                            amass_motion_rotmat[self.human_to_amass_kp[kp]],
-                            self.aligning_rotmats[kp],
-                        )
-                    )
-                    h36m_frame[kp][2] = temp[2]
-                    h36m_frame[kp][0] = -temp[1]
-                    h36m_frame[kp][1] = temp[0]
-
-                if kp in [24, 25, 26, 27]:
-                    temp = -RotConvert.rotmat2aa(
-                        np.matmul(
-                            amass_motion_rotmat[self.human_to_amass_kp[kp]],
-                            self.aligning_rotmats[kp],
-                        )
-                    )
-                    h36m_frame[kp][2] = temp[2]
-                    h36m_frame[kp][0] = temp[1]
-                    h36m_frame[kp][1] = -temp[0]
-        h36m_frame = np.concatenate([amass_trans, h36m_frame])
-        return h36m_frame
-
-    def amass_to_h36m_mocap(self, amass_mocap_rots, amass_mocap_trans=None):
-        # return np.apply_along_axis(self.amass_to_h36m_frame, axis=0, arr=amass_mocap)
-        num_frames = amass_mocap_rots.shape[0]
-
-        if amass_mocap_trans is None:
-            amass_mocap_trans = np.zeros((num_frames, 1, 3))
-
-        human_motion_full = np.zeros((num_frames, 33, 3))
-        for frame in range(num_frames):
-            human_motion_full[frame] = self.amass_to_h36m_frame(
-                amass_rots=amass_mocap_rots[frame], amass_trans=amass_mocap_trans[frame]
-            )
-
-        return human_motion_full
-
     @staticmethod
     def rotation_matrix_from_vectors(vec1, vec2):
         """Find the rotation matrix that aligns vec1 to vec2
@@ -554,7 +496,7 @@ class Amass2HumanConvert:
 
         return rotation_matrix
 
-    def amass_to_h36m_mocap_fast(
+    def amass_to_h36m_mocap(
         self,
         amass_rots: np.ndarray,
         amass_trans: Optional[np.ndarray] = None,
