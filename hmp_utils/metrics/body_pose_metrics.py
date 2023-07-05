@@ -365,10 +365,21 @@ class MetricsPostProcessor:
         return frame
 
 
-class SpectrumMetricsProcessor:
+class SpectrumMetricsProcessor:  # TODO
     """
     Compute metrics on the power spectrum.
     """
+
+    def __init__(self, gt_dataset: np.ndarray = None) -> None:
+        """
+        Pass a np.ndarray of mocaps of the form: (batch, seq_len, n_joints, 3)
+        to perform comparisons with the power spectrum distribution of the predictions
+        ---
+        ### Args:
+            gt_dataset -> (batch, seq_len, n_joints, 3)
+        """
+
+        self.gt_dataset = gt_dataset
 
     @staticmethod
     def power_spectrum(
@@ -515,3 +526,23 @@ class SpectrumMetricsProcessor:
                 )
 
         return w_distance  # (n_joints, 3)
+
+    def compute_distribution_metrics(  # TODO
+        gt_mocap: np.ndarray,
+        predictions: np.ndarray,
+        input_len: int,
+        output_len: int,
+    ) -> dict:
+        """
+        Compute the distribution metrics.
+
+        Args:
+            gt_dataset -> (batch, seq_len, n_joints, 3)
+            gt_mocap -> (batch, seq_len, n_joints, 3)
+            predictions -> (batch, seq_len, n_joints, 3)
+            input_len -> length of the input sequence
+            output_len -> length of the output sequence
+
+        Returns:
+
+        """
