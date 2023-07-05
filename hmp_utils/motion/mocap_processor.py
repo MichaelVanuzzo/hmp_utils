@@ -2,7 +2,6 @@ import os
 import logging
 import numpy as np
 from scipy import signal
-from typing import Union
 from enum import Enum, auto
 from typing import Optional, Union
 from scipy.spatial.transform import Slerp
@@ -266,7 +265,7 @@ class MocapLoader:
                 trans_trajectory,
                 original_framerate,
                 original_framerate,
-                gender="neutral"
+                gender="neutral",
             )
 
         # downsample to the target framerate
@@ -297,7 +296,7 @@ class MocapLoader:
             trans_trajectory,
             original_framerate,
             downsampled_framerate,
-            gender="neutral"
+            gender="neutral",
         )
 
     def __load_smpl_mocap(self, file_path):
@@ -479,64 +478,6 @@ class Amass2HumanConvert:
 
         return aligning_rotmats
 
-    def amass_to_h36m_frame(self, amass_rots, amass_trans=None):
-        if amass_trans is None:
-            amass_trans = np.zeros((1, 3))
-
-        amass_motion_rotmat = RotConvert.aa2rotmat(amass_rots)
-        h36m_frame = np.zeros((32, 3))
-
-        for kp in range(1, len(h36m_frame)):
-            if kp in self.human_to_skip:
-                pass
-            else:
-                h36m_frame[kp] = -RotConvert.rotmat2aa(
-                    np.matmul(
-                        amass_motion_rotmat[self.human_to_amass_kp[kp]],
-                        self.aligning_rotmats[kp],
-                    )
-                )
-
-                # need to swap axes
-                if kp in [16, 17, 18, 19]:
-                    temp = -RotConvert.rotmat2aa(
-                        np.matmul(
-                            amass_motion_rotmat[self.human_to_amass_kp[kp]],
-                            self.aligning_rotmats[kp],
-                        )
-                    )
-                    h36m_frame[kp][2] = temp[2]
-                    h36m_frame[kp][0] = -temp[1]
-                    h36m_frame[kp][1] = temp[0]
-
-                if kp in [24, 25, 26, 27]:
-                    temp = -RotConvert.rotmat2aa(
-                        np.matmul(
-                            amass_motion_rotmat[self.human_to_amass_kp[kp]],
-                            self.aligning_rotmats[kp],
-                        )
-                    )
-                    h36m_frame[kp][2] = temp[2]
-                    h36m_frame[kp][0] = temp[1]
-                    h36m_frame[kp][1] = -temp[0]
-        h36m_frame = np.concatenate([amass_trans, h36m_frame])
-        return h36m_frame
-
-    def amass_to_h36m_mocap(self, amass_mocap_rots, amass_mocap_trans=None):
-        # return np.apply_along_axis(self.amass_to_h36m_frame, axis=0, arr=amass_mocap)
-        num_frames = amass_mocap_rots.shape[0]
-
-        if amass_mocap_trans is None:
-            amass_mocap_trans = np.zeros((num_frames, 1, 3))
-
-        human_motion_full = np.zeros((num_frames, 33, 3))
-        for frame in range(num_frames):
-            human_motion_full[frame] = self.amass_to_h36m_frame(
-                amass_rots=amass_mocap_rots[frame], amass_trans=amass_mocap_trans[frame]
-            )
-
-        return human_motion_full
-
     @staticmethod
     def rotation_matrix_from_vectors(vec1, vec2):
         """Find the rotation matrix that aligns vec1 to vec2
@@ -554,3 +495,89 @@ class Amass2HumanConvert:
         rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s**2))
 
         return rotation_matrix
+
+    def amass_to_h36m_mocap(
+        self,
+        amass_rots: np.ndarray,
+        amass_trans: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """
+        Convert an amass mocap to the human3.6m format.
+        ---
+        ### Args:
+        amass_rots: array of amass rotations with shape (num_frame,num_joints,3)
+        amass_trans: array of amass root traslations with shape (num_frame,1,3)
+        ---
+        ### Returns:
+        The converted mocap with shape (num_frame,33,3)
+        """
+        num_frames = amass_rots.shape[0]
+        num_joints = H36MConstants.NUM_KEYPOINTS
+
+        if amass_trans is None:
+            amass_trans = np.zeros((num_frames, 1, 3))
+
+        human_motion = np.zeros((num_frames, num_joints, 3))
+        amass_rotmat = RotConvert.aa2rotmat(amass_rots)
+
+        for kp in range(1, num_joints):
+            if kp in self.human_to_skip:
+                pass
+            else:
+                human_motion[:, kp] = -RotConvert.rotmat2aa(
+                    np.matmul(
+                        amass_rotmat[:, self.human_to_amass_kp[kp]],
+                        self.aligning_rotmats[kp],
+                    )
+                )
+                # need to swap components
+                if kp in [16, 17, 18, 19]:
+                    human_motion[:, kp] = human_motion[:, kp, [1, 0, 2]]
+                    human_motion[:, kp] *= (-1, 1, 1)
+
+                if kp in [24, 25, 26, 27]:
+                    human_motion[:, kp] = human_motion[:, kp, [1, 0, 2]]
+                    human_motion[:, kp] *= (1, -1, 1)
+
+        human_motion = np.concatenate([amass_trans, human_motion], axis=1)
+        return human_motion
+
+
+def h36m_np_to_txt(
+    motion: np.ndarray,
+    dir_path: str,
+    filename: str,
+    root_trans: Optional[np.ndarray] = None,
+) -> None:
+    """
+    Function to save a h36m mocap in the same format as the original dataset
+    ---
+    ### Args:
+    - motion: mocap to save with shape (...,joints,3)
+    - dir_path: path of the saved file
+    - filename: name of the saved file (without ".txt")
+    - root_trans: root position with shape (...,3)
+    """
+
+    original_shape = motion.shape
+    # -- reshape to (num_frame,joints,3) --
+    motion = np.reshape(motion, (-1, *original_shape[-2:]))
+    num_frames = motion.shape[0]
+    num_joints = motion.shape[1]
+    assert num_joints in [32, 33]
+
+    # -- add root position if it's missing in the mocap --
+    if num_joints == 32:
+        if root_trans is None:
+            root_trans = np.zeros([num_frames, 1, 3])
+        else:
+            root_trans = np.reshape(root_trans, (-1, 1, 3))
+        motion = np.concatenate([root_trans, motion], axis=1)
+
+    # -- reshape to (num_frame,99) --
+    motion_txt = np.reshape(motion, [-1, 99])
+    # -- save to txt --
+    file_path = os.path.join(dir_path, f"{filename}.txt")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    np.savetxt(file_path, motion_txt, fmt="%.7f", delimiter=",")
