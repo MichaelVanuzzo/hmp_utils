@@ -1,6 +1,7 @@
 import os
 import logging
 import numpy as np
+import math
 from scipy import signal
 from enum import Enum, auto
 from typing import Optional, Union
@@ -236,7 +237,7 @@ class MocapLoader:
         original_num_frames = rot_trajectory.shape[0]
 
         # check if in the downsampled traj there will be at least one frame
-        if int(round(original_num_frames * target_framerate / original_framerate) <= 1):
+        if math.floor(original_num_frames * target_framerate / original_framerate) < 1:
             return None
 
         framerate_difference = abs(original_framerate - target_framerate)
@@ -305,27 +306,36 @@ class MocapLoader:
         if data is None:
             raise Exception(f"Could not load mocap file {file_path}")
 
-        smpl_keys = ["poses", "trans", "mocap_framerate", "gender"]
-        if any([key not in data.files for key in smpl_keys]):
+        smpl_keys = ["poses", "trans", "gender"]
+        smpl_framerate_keys = ["mocap_frame_rate", "mocap_framerate"]
+        if any(key not in data.files for key in smpl_keys) or all(
+            key not in data.files for key in smpl_framerate_keys
+        ):
             raise Exception(
                 f"KeyError: {smpl_keys} smpl key was not found in mocap {file_path}"
             )
 
         if self.target_framerate is None:
-            target_framerate = float(data["mocap_framerate"])
+            if "mocap_frame_rate" in data.files:
+                target_framerate = float(data["mocap_frame_rate"])
+            else:
+                target_framerate = float(data["mocap_framerate"])
         else:
             target_framerate = self.target_framerate
 
         rot_trajectory = np.array(data["poses"])
         trans_trajectory = np.array(data["trans"])
 
-        original_framerate = float(data["mocap_framerate"])
+        if "mocap_frame_rate" in data.files:
+            original_framerate = float(data["mocap_frame_rate"])
+        else:
+            original_framerate = float(data["mocap_framerate"])
         original_num_frames = rot_trajectory.shape[0]
 
         gender = str(data["gender"])
 
         # check if in the downsampled traj there will be at least one frame
-        if int(round(original_num_frames * target_framerate / original_framerate) <= 1):
+        if math.floor(original_num_frames * target_framerate / original_framerate) < 1:
             return None
 
         framerate_difference = abs(original_framerate - target_framerate)
