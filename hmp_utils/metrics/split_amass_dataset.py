@@ -1,8 +1,17 @@
 import numpy as np
 import math
 import os
+import json
+
+from tqdm import tqdm
+
+from .. import MocapLoader, BodyModelType
 
 SEED = 130297
+MIN_MOCAP_FRAMES = 150
+TEST_SET_PERCENTAGE = 5
+VALID_SET_PERCENTAGE = 5
+TARGET_FRAMERATE = 120
 
 # In the sub datasets present in AMASS_DATASETS_BY_SUBJECT the train, validation and
 # test sets are created by separating the subjects present into equal parts
@@ -26,14 +35,16 @@ AMASS_DATASETS_BY_ACTION = [
     "Transitions",
 ]
 
+AMASS_DATASETS = sorted(AMASS_DATASETS_BY_SUBJECT + AMASS_DATASETS_BY_ACTION)
+
 
 def get_sets_indexes_dict(
     samples_num: int,
-    test_set_percentage: float = 5,
-    valid_set_percentage: float = 5,
-):
+    test_set_percentage: float = TEST_SET_PERCENTAGE,
+    valid_set_percentage: float = VALID_SET_PERCENTAGE,
+) -> dict:
     """
-    Returns a list of indices for the train, test and validation sets.
+    Returns a dictionary containing a list of indices for the train, test and validation sets.
     The indices are shuffled randomly.
     ---
     ### Args:
@@ -69,12 +80,24 @@ def get_sets_indexes_dict(
     }
 
 
-def get_mocap_lists_by_dataset(dataset_list: list):
+def get_num_frames(mocap_path: str, mocap_loader: MocapLoader) -> int:
+    """
+    Returns the number of frames in a mocap file.
+    ---
+    ### Args:
+    - `mocap_path` (str): path to the mocap file.
+    """
+    mocap = mocap_loader.load_mocap(mocap_path)
+    return mocap.trans.shape[0]  # trans: translation of root joint (num_frames, 1, 3)
+
+
+def get_mocap_lists_by_dataset(dataset_list: list, mocap_loader: MocapLoader) -> list:
     """
     Returns a list of lists of mocap files for each subject in each dataset.
     ---
     ### Args:
     - `dataset_list` (list): list of lists of subjects in each dataset.
+    - `mocap_loader` (MocapLoader): mocap loader.
     """
     mocap_lists_by_dataset = []
     # Iterate over each dataset in subject_lists_dict["action"]
@@ -89,13 +112,14 @@ def get_mocap_lists_by_dataset(dataset_list: list):
                 if entry.is_file()
                 and entry.name.endswith(".npz")
                 and "ei.npz" not in entry.name
+                and get_num_frames(entry.path, mocap_loader) >= MIN_MOCAP_FRAMES
             ]
             mocap_list_by_subject.append(mocap_list)
         mocap_lists_by_dataset.append(mocap_list_by_subject)
     return mocap_lists_by_dataset
 
 
-def get_random_subject_list_by_dataset(dataset_list: list):
+def get_random_subject_list_by_dataset(dataset_list: list) -> list:
     """
     Returns a list of lists of subjects for each dataset.
     The subjects are shuffled randomly.
@@ -112,7 +136,7 @@ def get_random_subject_list_by_dataset(dataset_list: list):
     return subject_list_by_dataset
 
 
-def get_random_mocap_list_by_dataset(dataset_list: list):
+def get_random_mocap_list_by_dataset(dataset_list: list) -> list:
     """
     Returns a list of lists of mocap files for each subject in each dataset.
     The mocap files are shuffled randomly.
@@ -132,7 +156,7 @@ def get_random_mocap_list_by_dataset(dataset_list: list):
     return mocap_lists_by_dataset
 
 
-def get_few_mocaps_subject_list(dataset: list):
+def get_few_mocaps_subject_list(dataset: list) -> list:
     """
     Returns a list of subjects with less than half the mean number of mocaps.
     ---
@@ -154,13 +178,22 @@ def get_few_mocaps_subject_list(dataset: list):
     ]
 
 
-def split_amass_dataset(amass_directory: str = "/home/devlab/datasets/AMASS-SMPL-X"):
+def split_amass_dataset(
+    amass_directory: str,
+    sets_by_dataset_dict_file_name: str = None,
+    test_set_percentage: float = TEST_SET_PERCENTAGE,
+    valid_set_percentage: float = VALID_SET_PERCENTAGE,
+) -> dict:
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
+    If `sets_by_dataset_dict_file_name` is not None, the dictionary is saved to a file.
     ---
     ### Args:
     - `amass_directory` (str): path to the AMASS dataset root directory.
+    - `sets_by_dataset_dict_file_name` (str): name (with path) of the file containing the dictionary.
+    - `test_set_percentage` (float): percentage of samples to be used for the test set.
+    - `valid_set_percentage` (float): percentage of samples to be used for the validation set.
     """
     subdataset_lists = {
         "subject": AMASS_DATASETS_BY_SUBJECT,
@@ -185,9 +218,14 @@ def split_amass_dataset(amass_directory: str = "/home/devlab/datasets/AMASS-SMPL
             )
         subject_list_by_dataset_dict[key] = subject_list_by_dataset
 
+    mocap_loader = MocapLoader(
+        body_model_type=BodyModelType.SMPL,
+        keypoint_ids_to_load=[0],
+        target_framerate=TARGET_FRAMERATE,
+    )
     mocap_lists_by_dataset_dict = {}
     mocap_lists_by_dataset_dict["action"] = get_mocap_lists_by_dataset(
-        subject_list_by_dataset_dict["action"]
+        subject_list_by_dataset_dict["action"], mocap_loader
     )
 
     subject_list_by_dataset_dict["subject"] = get_random_subject_list_by_dataset(
@@ -204,13 +242,19 @@ def split_amass_dataset(amass_directory: str = "/home/devlab/datasets/AMASS-SMPL
         few_mocaps_subjects = get_few_mocaps_subject_list(dataset)
         dataset = [subject for subject in dataset if subject not in few_mocaps_subjects]
 
-        sets_indexes_dict = get_sets_indexes_dict(len(dataset))
+        sets_indexes_dict = get_sets_indexes_dict(
+            len(dataset),
+            test_set_percentage=test_set_percentage,
+            valid_set_percentage=valid_set_percentage,
+        )
 
         for key, value in sets_indexes_dict.items():
             sets_dict[key] = [dataset[index] for index in value]
         sets_dict["train"].extend(few_mocaps_subjects)
 
-        mocap_lists_by_set = get_mocap_lists_by_dataset(sets_dict.values())
+        mocap_lists_by_set = get_mocap_lists_by_dataset(
+            sets_dict.values(), mocap_loader
+        )
 
         sets_keys = list(sets_dict.keys())
         sets_dict = {}
@@ -231,10 +275,164 @@ def split_amass_dataset(amass_directory: str = "/home/devlab/datasets/AMASS-SMPL
             if len(mocap_list) < 3:
                 sets_dict["train"].extend(mocap_list)
             else:
-                sets_indexes_dict = get_sets_indexes_dict(len(mocap_list))
+                sets_indexes_dict = get_sets_indexes_dict(
+                    len(mocap_list),
+                    test_set_percentage=test_set_percentage,
+                    valid_set_percentage=valid_set_percentage,
+                )
                 for key, value in sets_indexes_dict.items():
                     sets_dict[key].extend([mocap_list[index] for index in value])
 
         subdatset_name = subdataset_lists["action"][subdataset_idx]
         for key, value in sets_dict.items():
             sets_by_dataset_dict[key][subdatset_name] = value
+
+    if sets_by_dataset_dict_file_name != None:
+        # Convert the dictionary to JSON format
+        json_data = json.dumps(sets_by_dataset_dict)
+
+        # Save the JSON to a file
+        with open(sets_by_dataset_dict_file_name + ".json", "w") as file:
+            file.write(json_data)
+
+    return sets_by_dataset_dict
+
+
+def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str) -> dict:
+    """
+    Returns a dictionary of dictionaries containing the train, test and validation sets
+    for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
+    ---
+    ### Args:
+    - `sets_by_dataset_dict_file_name` (str): name of the file containing the dictionary.
+    """
+    with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
+        json_data = file.read()
+    return json.loads(json_data)
+
+
+def compute_mocap_info(dataset_name: str, mocap_info_by_set_dict: dict) -> dict:
+    """
+    Returns a dictionary containing the number of mocaps, frames, and other informations
+    joining the sets in a dataset.
+    ---
+    ### Args:
+    - `dataset_name` (str): name of the dataset.
+    - `mocap_info_by_set_dict` (dict): dictionary of dictionaries containing the number of
+    mocaps and frames for each set in a dataset.
+    """
+    dataset_sets_info = [set[dataset_name] for set in mocap_info_by_set_dict.values()]
+    return {
+        "num_mocaps": sum([set_info["num_mocaps"] for set_info in dataset_sets_info]),
+        "num_frames": sum([set_info["num_frames"] for set_info in dataset_sets_info]),
+        "min_num_frames": min(
+            [set_info["min_num_frames"] for set_info in dataset_sets_info]
+        ),
+        "max_num_frames": max(
+            [set_info["max_num_frames"] for set_info in dataset_sets_info]
+        ),
+        "mean_num_frames": np.average(
+            [set_info["mean_num_frames"] for set_info in dataset_sets_info],
+            weights=[set_info["num_mocaps"] for set_info in dataset_sets_info],
+        ),
+    }
+
+
+def print_amass_sets_info(sets_by_dataset_dict: dict):
+    """
+    Prints information about the train, test and validation sets for each sub dataset
+    in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
+    ---
+    ### Args:
+    - `sets_by_dataset_dict` (dict): dictionary of dictionaries containing the train,
+    test and validation sets for each sub dataset in AMASS_DATASETS_BY_SUBJECT and
+    AMASS_DATASETS_BY_ACTION.
+    """
+    mocap_info_by_set_dict = {"train": {}, "test": {}, "validation": {}}
+    mocap_info_dict = {}
+
+    mocap_loader = MocapLoader(
+        body_model_type=BodyModelType.SMPL,
+        keypoint_ids_to_load=[0],
+        target_framerate=TARGET_FRAMERATE,
+    )
+    for dataset_name in AMASS_DATASETS:
+        for set_name, set in sets_by_dataset_dict.items():
+            dataset = set[dataset_name]
+            list_of_num_frames = [
+                get_num_frames(mocap, mocap_loader)
+                for mocap in tqdm(
+                    dataset,
+                    desc=f"Getting number of frames in {dataset_name}/{set_name}",
+                )
+            ]
+            mocap_info_by_set_dict[set_name][dataset_name] = {
+                "num_mocaps": len(list_of_num_frames),
+                "num_frames": sum(list_of_num_frames),
+                "min_num_frames": min(list_of_num_frames),
+                "max_num_frames": max(list_of_num_frames),
+                "mean_num_frames": np.mean(list_of_num_frames),
+                "std_num_frames": np.std(list_of_num_frames),
+            }
+        mocap_info_dict[dataset_name] = compute_mocap_info(
+            dataset_name, mocap_info_by_set_dict
+        )
+
+    for set_name, set in mocap_info_by_set_dict.items():
+        datasets_info = [set[dataset_name] for dataset_name in AMASS_DATASETS]
+        mocap_info_by_set_dict[set_name]["AMASS"] = {
+            "num_mocaps": sum(
+                [dataset_info["num_mocaps"] for dataset_info in datasets_info]
+            ),
+            "num_frames": sum(
+                [dataset_info["num_frames"] for dataset_info in datasets_info]
+            ),
+            "min_num_frames": min(
+                [dataset_info["min_num_frames"] for dataset_info in datasets_info]
+            ),
+            "max_num_frames": max(
+                [dataset_info["max_num_frames"] for dataset_info in datasets_info]
+            ),
+            "mean_num_frames": np.average(
+                [dataset_info["mean_num_frames"] for dataset_info in datasets_info],
+                weights=[dataset_info["num_mocaps"] for dataset_info in datasets_info],
+            ),
+        }
+    mocap_info_dict["AMASS"] = compute_mocap_info("AMASS", mocap_info_by_set_dict)
+
+    for dataset_name in ["AMASS"] + AMASS_DATASETS:
+        print(f"Dataset name: {dataset_name}")
+
+        mocap_info = mocap_info_dict[dataset_name]
+        tot_num_mocaps = mocap_info["num_mocaps"]
+        tot_num_frames = mocap_info["num_frames"]
+        print(f"  Number of mocaps: {tot_num_mocaps}")
+        print(f"  Number of frames: {tot_num_frames}")
+        print(
+            f"  Total number of minutes: {mocap_info['num_frames']/TARGET_FRAMERATE/60:.3f}"
+        )
+        print(f"  Min number of frames: {mocap_info['min_num_frames']}")
+        print(f"  Max number of frames: {mocap_info['max_num_frames']}")
+        print(f"  Mean number of frames: {mocap_info['mean_num_frames']:.3f}")
+        print()
+
+        for set_name, set in mocap_info_by_set_dict.items():
+            mocap_info = set[dataset_name]
+            print(f"  Set name: {set_name}")
+            print(f"    Number of mocaps: {mocap_info['num_mocaps']}")
+            print(
+                f"    Percentage of mocaps: {mocap_info['num_mocaps']/tot_num_mocaps*100:.3f}%"
+            )
+            print(f"    Number of frames: {mocap_info['num_frames']}")
+            print(
+                f"    Total number of minutes: {mocap_info['num_frames']/TARGET_FRAMERATE/60:.3f}"
+            )
+            print(
+                f"    Percentage of frames: {mocap_info['num_frames']/tot_num_frames*100:.3f}%"
+            )
+            print(f"    Min number of frames: {mocap_info['min_num_frames']}")
+            print(f"    Max number of frames: {mocap_info['max_num_frames']}")
+            print(f"    Mean number of frames: {mocap_info['mean_num_frames']:.3f}")
+            if dataset_name != "AMASS":
+                print(f"    Std number of frames: {mocap_info['std_num_frames']:.3f}")
+        print()
