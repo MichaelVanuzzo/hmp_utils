@@ -8,17 +8,16 @@ from tqdm import tqdm
 from .. import MocapLoader, BodyModelType
 
 SEED = 130297
-MIN_MOCAP_FRAMES = 150
 TEST_SET_PERCENTAGE = 5
 VALID_SET_PERCENTAGE = 5
 TARGET_FRAMERATE = 120
+MIN_MOCAP_FRAMES = TARGET_FRAMERATE * 3  # 3 seconds
 
 # In the sub datasets present in AMASS_DATASETS_BY_SUBJECT the train, validation and
 # test sets are created by separating the subjects present into equal parts
 AMASS_DATASETS_BY_SUBJECT = [
     "BMLmovi",
     "BMLrub",
-    "DFaust",
     "EyesJapanDataset/Eyes_Japan_Dataset",
     "HDM05",
     "MoSh",
