@@ -89,31 +89,38 @@ def get_h36m_evaluation_frames(
     return frame_idxs
 
 
-def get_start_indices_amass(mocap_len: int, framerate: int) -> list:
+def get_start_indices_amass(mocap_len: int, seq_len: int) -> list:
     """
     Find start frames indices for standard evaluation with AMASS dataset.
     ---
     ### Args:
     - `mocap_len` (int): number of frames of the mocap.
-    - `framerate` (int): framerate of the mocap.
+    - `seq_len` (int): length of the sequence in frames.
     """
     rng = np.random.RandomState(AMASS_EVALUATION_SEED)
 
-    max_index = mocap_len - AMASS_SEQ_LEN
-    if max_index >= AMASS_MAX_SEQUENCES_BY_MOCAP * AMASS_SEQ_LEN:
-        min_index = math.ceil(AMASS_SEQ_LEN / 2)
-        max_index -= math.floor(AMASS_SEQ_LEN / 2)
+    subsections = min(mocap_len // seq_len, AMASS_MAX_SEQUENCES_BY_MOCAP)
+
+    last_index = mocap_len - seq_len + 1  # first not usable index in the mocap
+    if last_index > AMASS_MAX_SEQUENCES_BY_MOCAP * seq_len:
+        first_index = math.ceil(seq_len / 2)
+        last_index -= math.floor(seq_len / 2)
+    elif mocap_len % seq_len > math.floor(seq_len / 2):
+        first_index = math.floor(seq_len / 2)
+    elif subsections > 1:
+        first_index = math.ceil(seq_len / 2)
+        subsections -= 1
     else:
-        min_index = math.ceil((mocap_len % AMASS_SEQ_LEN) / 2)
+        first_index = math.ceil((mocap_len % seq_len) / 2)
+
+    if subsections > 0:
+        subseq_len = (last_index - first_index) // subsections
 
     frame_idxs = []
-    subsections = min(
-        (max_index - min_index + 1) // AMASS_SEQ_LEN, AMASS_MAX_SEQUENCES_BY_MOCAP
-    )
     for idx in range(subsections):
         frame_idxs.append(
             rng.randint(
-                min_index + idx * AMASS_SEQ_LEN, min_index + (idx + 1) * AMASS_SEQ_LEN
+                first_index + idx * subseq_len, first_index + (idx + 1) * subseq_len
             )
         )
 
@@ -125,9 +132,9 @@ def get_amass_evaluation_frames(
     input_len: int,
     output_len: int,
     framerate: int,
-) -> np.ndarray:
+) -> list:
     """
-    Returns a numpy array (num_mocap, num_seq) with the frame indexes selected for evaluation.
+    Returns a list of lists (num_mocap, num_seq) of frame indices selected for evaluation.
     ---
     ### Args:
     - `num_frames_list` (list or np.ndarray): list of number of frames of the mocaps.
@@ -144,15 +151,14 @@ def get_amass_evaluation_frames(
             "output_len must be smaller than or equal to AMASS_OUTPUT_SEQ_LEN(1s) * framerate"
         )
 
-    frame_idxs_list = np.array([])
+    frame_idxs_list = []
     for num_frames in num_frames_list:
-        start_idxs = get_start_indices_amass(mocap_len=num_frames, framerate=framerate)
-        frame_idxs = np.array([])
-        for start_idx in start_idxs:
+        frame_idxs = []
+        for start_idx in get_start_indices_amass(
+            mocap_len=num_frames, seq_len=AMASS_SEQ_LEN * framerate
+        ):
             t0 = start_idx + AMASS_INPUT_SEQ_LEN * framerate
-            frame_idxs = np.append(
-                frame_idxs, np.arange(t0 - input_len, t0 + output_len)
-            )
-        frame_idxs_list = np.append(frame_idxs_list, frame_idxs)
+            frame_idxs.append(range(t0 - input_len, t0 + output_len))
+        frame_idxs_list.append(frame_idxs)
 
     return frame_idxs_list
