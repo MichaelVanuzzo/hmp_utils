@@ -64,7 +64,7 @@ class MetricsProcessor:
     def euler_error(
         self,
         euler_seq: str = RotConvert.DEFAULT_EULER_SEQ,
-        single_joint_errors: bool = False,
+        errors_computed_per_joint: bool = False,
         joint_weights: Optional[Union[list, np.ndarray]] = None,
     ) -> np.ndarray:
         """
@@ -101,7 +101,7 @@ class MetricsProcessor:
                 "The length of joints_to_compute and joint_weights must be the same"
             )
 
-        if single_joint_errors:
+        if errors_computed_per_joint:
             # Compute euclidean distance (L2 norm) on the body joints (vectors like (3))
             # The resulting error tensor will have n_joints Euler distance per time step per sequence
             euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=-1)
@@ -365,21 +365,10 @@ class MetricsPostProcessor:
         return frame
 
 
-class SpectrumMetricsProcessor:  # TODO
+class SpectrumMetricsProcessor:
     """
     Compute metrics on the power spectrum.
     """
-
-    def __init__(self, gt_dataset: np.ndarray = None) -> None:
-        """
-        Pass a np.ndarray of mocaps of the form: (batch, seq_len, n_joints, 3)
-        to perform comparisons with the power spectrum distribution of the predictions
-        ---
-        ### Args:
-            gt_dataset -> (batch, seq_len, n_joints, 3)
-        """
-
-        self.gt_dataset = gt_dataset
 
     @staticmethod
     def power_spectrum(
@@ -400,6 +389,7 @@ class SpectrumMetricsProcessor:  # TODO
         feature_size = seq_t.shape[-1]
         n_joints = seq_t.shape[-2]
         seq_len = seq_t.shape[-3]
+        batch_size = seq_t.shape[-4]
 
         seq_t = np.reshape(
             seq_t, [-1, seq_len, n_joints * feature_size]
@@ -417,30 +407,43 @@ class SpectrumMetricsProcessor:  # TODO
                 norm_values == 0, 1, norm_values
             )  # avoid division by 0
             seq_ps_global /= norm_values  # (seq_len, n_joints*3)
+        else:
+            seq_ps_global /= batch_size
 
         return np.reshape(
             seq_ps_global, (-1, n_joints, feature_size)
         )  # (seq_len, n_joints, 3)
 
-    def ps_entropy(self, seq, is_t_seq=False) -> np.ndarray:
+    @staticmethod
+    def ps_entropy(seq, is_t_seq=False, get_mean=True) -> Union[float, np.array]:
         """
         Compute the entropy of the power spectrum.
 
         Args:
             seq -> (..., seq_len, n_joints, 3)
             is_t_seq -> whether the sequence is in time domain or not
+            get_mean -> whether to return the mean of the entropies or all the entropies
 
         Returns:
-            (n_joints, 3)
+            float or (n_joints, 3) if get_mean is False
         """
         if is_t_seq:
-            seq_ps = self.power_spectrum(seq)  # (seq_len, n_joints, 3)
+            seq_ps = SpectrumMetricsProcessor.power_spectrum(
+                seq
+            )  # (seq_len, n_joints, 3)
         else:
             seq_ps = seq  # (seq_len, n_joints, 3)
 
-        return stats.entropy(seq_ps, base=2, axis=0)  # (n_joints, 3)
+        entropy = stats.entropy(seq_ps, base=2, axis=0)  # (n_joints, 3)
+        if get_mean:
+            return np.mean(entropy)
+        else:
+            return entropy
 
-    def kl_divergence(self, seq_from, seq_to, is_t_seq=False) -> np.ndarray:
+    @staticmethod
+    def kl_divergence(
+        seq_from, seq_to, is_t_seq=False, get_mean=True
+    ) -> Union[float, np.array]:
         """
         Compute the KL(Kullback–Leibler) divergence between two power spectrums.
 
@@ -448,23 +451,36 @@ class SpectrumMetricsProcessor:  # TODO
             seq_from -> (..., seq_len, n_joints, 3)
             seq_to -> (..., seq_len, n_joints, 3)
             is_t_seq -> whether the sequences are in time domain or not
+            get_mean -> whether to return the mean of the kl divergences or all the divergences
 
         Returns:
-            (n_joints, 3)
+            float or (n_joints, 3) if get_mean is False
         """
 
         if is_t_seq:
-            seq_ps_from = self.power_spectrum(seq_from)  # (seq_len, n_joints, 3)
-            seq_ps_to = self.power_spectrum(seq_to)  # (seq_len, n_joints, 3)
+            seq_ps_from = SpectrumMetricsProcessor.power_spectrum(
+                seq_from
+            )  # (seq_len, n_joints, 3)
+            seq_ps_to = SpectrumMetricsProcessor.power_spectrum(
+                seq_to
+            )  # (seq_len, n_joints, 3)
         else:
             seq_ps_from = seq_from  # (seq_len, n_joints, 3)
             seq_ps_to = seq_to  # (seq_len, n_joints, 3)
 
-        return stats.entropy(
+        kl_divergence = stats.entropy(
             pk=seq_ps_from, qk=seq_ps_to, base=2, axis=0
         )  # (n_joints, 3)
 
-    def js_divergence(self, seq_g, seq_h, is_t_seq=False) -> np.ndarray:
+        if get_mean:
+            return np.mean(kl_divergence)  # float
+        else:
+            return kl_divergence  # (n_joints, 3)
+
+    @staticmethod
+    def js_divergence(
+        seq_g, seq_h, is_t_seq=False, get_mean=True
+    ) -> Union[float, np.array]:
         """
         Compute the JS (Jensen-Shannon) divergence between two power spectrums.
 
@@ -472,26 +488,41 @@ class SpectrumMetricsProcessor:  # TODO
             seq_from -> (..., seq_len, n_joints, 3)
             seq_to -> (..., seq_len, n_joints, 3)
             is_t_seq -> whether the sequences are in time domain or not
+            get_mean -> whether to return the mean of the js divergences or all the divergences
 
         Returns:
-            (n_joints, 3)
+            float or (n_joints, 3) if get_mean is False
         """
 
         if is_t_seq:
-            seq_ps_g = self.power_spectrum(seq_g)  # (seq_len, n_joints, 3)
-            seq_ps_h = self.power_spectrum(seq_h)  # (seq_len, n_joints, 3)
+            seq_ps_g = SpectrumMetricsProcessor.power_spectrum(
+                seq_g
+            )  # (seq_len, n_joints, 3)
+            seq_ps_h = SpectrumMetricsProcessor.power_spectrum(
+                seq_h
+            )  # (seq_len, n_joints, 3)
         else:
             seq_ps_g = seq_g  # (seq_len, n_joints, 3)
             seq_ps_h = seq_h  # (seq_len, n_joints, 3)
 
         jd_divergence = (
-            self.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2) / 2
-            + self.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2) / 2
+            SpectrumMetricsProcessor.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2)
+            / 2
+            + SpectrumMetricsProcessor.kl_divergence(
+                seq_ps_h, (seq_ps_g + seq_ps_h) / 2
+            )
+            / 2
         )
 
-        return jd_divergence  # (n_joints, 3)
+        if get_mean:
+            return np.mean(jd_divergence)  # float
+        else:
+            return jd_divergence  # (n_joints, 3)
 
-    def wasserstein_distance(self, seq_u, seq_v, is_t_seq=False) -> np.ndarray:
+    @staticmethod
+    def wasserstein_distance(
+        seq_u, seq_v, is_t_seq=False, get_mean=True
+    ) -> Union[float, np.array]:
         """
         Compute the Wasserstein distance between two power spectrums.
 
@@ -499,19 +530,20 @@ class SpectrumMetricsProcessor:  # TODO
             seq_u -> (..., seq_len, n_joints, 3)
             seq_v -> (..., seq_len, n_joints, 3)
             is_t_seq -> whether the sequences are in time domain or not
+            get_mean -> whether to return the mean of the wasserstein distances or all the distances
 
         Returns:
-            (n_joints, 3)
+            float or (n_joints, 3) if get_mean is False
         """
 
         feature_size = seq_u.shape[-1]
         n_joints = seq_u.shape[-2]
 
         if is_t_seq:
-            seq_ps_u = self.power_spectrum(
+            seq_ps_u = SpectrumMetricsProcessor.power_spectrum(
                 seq_u, normalize=True
             )  # (seq_len, n_joints, 3)
-            seq_ps_v = self.power_spectrum(
+            seq_ps_v = SpectrumMetricsProcessor.power_spectrum(
                 seq_v, normalize=True
             )  # (seq_len, n_joints, 3)
         else:
@@ -525,24 +557,7 @@ class SpectrumMetricsProcessor:  # TODO
                     seq_ps_u[:, i, j], seq_ps_v[:, i, j]
                 )
 
-        return w_distance  # (n_joints, 3)
-
-    def compute_distribution_metrics(  # TODO
-        gt_mocap: np.ndarray,
-        predictions: np.ndarray,
-        input_len: int,
-        output_len: int,
-    ) -> dict:
-        """
-        Compute the distribution metrics.
-
-        Args:
-            gt_dataset -> (batch, seq_len, n_joints, 3)
-            gt_mocap -> (batch, seq_len, n_joints, 3)
-            predictions -> (batch, seq_len, n_joints, 3)
-            input_len -> length of the input sequence
-            output_len -> length of the output sequence
-
-        Returns:
-
-        """
+        if get_mean:
+            return np.mean(w_distance)  # float
+        else:
+            return w_distance  # (n_joints, 3)
