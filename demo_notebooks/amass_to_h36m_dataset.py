@@ -5,8 +5,13 @@ from tqdm import tqdm
 
 if "../" not in sys.path:
     sys.path.append("../")
-from hmp_utils import MocapLoader, Amass2HumanConvert, SmplConstants, h36m_np_to_txt
-from hmp_utils.metrics.split_amass_dataset import AMASS_DATASETS
+from hmp_utils import (
+    MocapLoader,
+    Amass2HumanConvert,
+    SmplConstants,
+    h36m_np_to_txt,
+    AMASS_DATASETS,
+)
 
 # General variables
 target_framerate = 50
@@ -21,7 +26,7 @@ save_dir = f"/home/devlab/datasets/AmassX_to_Human_{target_framerate}fps/"
 datasets = AMASS_DATASETS
 # don't load these mocaps
 exceptions = [
-    "/home/devlab/datasets/AMASS-SMPL-X/EKUT/265/MTR03_stageii.npz", # bugged
+    "/home/devlab/datasets/AMASS-SMPL-X/EKUT/265/MTR03_stageii.npz",  # bugged
 ]
 
 print("Start of conversion", flush=True)
