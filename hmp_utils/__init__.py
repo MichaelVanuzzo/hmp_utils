@@ -22,7 +22,7 @@ from .metrics.body_pose_metrics import (
 )
 from .metrics.evaluation_utils import (
     AMASS_SEQ_LEN,
-    SnrrEvaluationFrames,
+    SrnnEvaluationFrames,
     AmassEvaluationFrames,
 )
 from .metrics.split_amass_dataset import (

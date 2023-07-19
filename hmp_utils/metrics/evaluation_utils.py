@@ -18,7 +18,7 @@ SPECTRUM_EVALUATION_SEQ_LEN = 1  # in seconds
 MIN_SPECTRUM_METRICS_EVALUATION_BACH_SIZE = 20000  # as in STT
 
 
-class SnrrEvaluationFrames:
+class SrnnEvaluationFrames:
     @staticmethod
     def get_start_indices(len_subaction_1: int, len_subaction_2: int) -> list:
         """
@@ -58,7 +58,7 @@ class SnrrEvaluationFrames:
         if output_len > SUFFIX:
             raise ValueError("output_len must be smaller than or equal to 100")
 
-        start_idxs = SnrrEvaluationFrames.get_start_indices(
+        start_idxs = SrnnEvaluationFrames.get_start_indices(
             len_subaction_1, len_subaction_2
         )
         frame_idxs = np.zeros(
