@@ -26,7 +26,7 @@ save_dir = f"/home/devlab/datasets/AmassX_to_Human_{target_framerate}fps/"
 datasets = AMASS_DATASETS
 # don't load these mocaps
 exceptions = [
-    "/home/devlab/datasets/AMASS-SMPL-X/EKUT/265/MTR03_stageii.npz",  # bugged
+    "/home/devlab/datasets/AMASS-SMPL-X/EKUT/265/MTR03_stageii.npz",  # bugged TODO check
 ]
 
 print("Start of conversion", flush=True)
