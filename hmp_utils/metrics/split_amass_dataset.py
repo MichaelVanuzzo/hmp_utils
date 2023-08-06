@@ -191,6 +191,7 @@ def get_few_mocaps_subject_list(dataset: list) -> list:
 def split_amass_dataset(
     amass_directory: str,
     sets_by_dataset_dict_file_name: str = None,
+    use_relative_path: bool = True,
     test_set_percentage: float = TEST_SET_PERCENTAGE,
     valid_set_percentage: float = VALID_SET_PERCENTAGE,
 ) -> dict:
@@ -204,8 +205,9 @@ def split_amass_dataset(
     - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
         the file containing the dictionary. If None, the dictionary is not saved to a file.
         Example: '/path/to/folder/sets_by_dataset_dict'.
-    - `test_set_percentage` (float): percentage of samples to be used for the test set.
-    - `valid_set_percentage` (float): percentage of samples to be used for the validation set.
+    - `use_relative_path` (bool): if True, the mocap paths in the dictionary are relative (default: True).
+    - `test_set_percentage` (float): percentage of samples to be used for the test set (default: 5).
+    - `valid_set_percentage` (float): percentage of samples to be used for the validation set (default: 5).
     """
     subdataset_lists = {
         "subject": AMASS_DATASETS_BY_SUBJECT,
@@ -300,6 +302,14 @@ def split_amass_dataset(
             sets_by_dataset_dict[key][subdatset_name] = value
 
     if sets_by_dataset_dict_file_name != None:
+        if use_relative_path:
+            for key, value in sets_by_dataset_dict.items():
+                for subdataset_name, mocap_list in value.items():
+                    sets_by_dataset_dict[key][subdataset_name] = [
+                        os.path.relpath(mocap_path, amass_directory)
+                        for mocap_path in mocap_list
+                    ]
+
         # Convert the dictionary to JSON format
         json_data = json.dumps(sets_by_dataset_dict)
 
@@ -314,7 +324,9 @@ def split_amass_dataset(
     return sets_by_dataset_dict
 
 
-def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str) -> dict:
+def load_sets_by_dataset_dict(
+    sets_by_dataset_dict_file_name: str, amass_directory: str = None
+) -> dict:
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
@@ -322,10 +334,22 @@ def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str) -> dict:
     ### Args:
     - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
         the file containing the dictionary.
+        Example: '/path/to/folder/sets_by_dataset_dict'.
+    - `amass_directory` (str): absolute path to the AMASS dataset root directory if the
+        mocap paths in the dictionary are relative.
     """
     with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
         json_data = file.read()
-    return json.loads(json_data)
+    sets_by_dataset_dict = json.loads(json_data)
+
+    if amass_directory != None:
+        for key, value in sets_by_dataset_dict.items():
+            for subdataset_name, mocap_list in value.items():
+                sets_by_dataset_dict[key][subdataset_name] = [
+                    os.path.join(amass_directory, mocap_path)
+                    for mocap_path in mocap_list
+                ]
+    return sets_by_dataset_dict
 
 
 def compute_mocap_info(dataset_name: str, mocap_info_by_set_dict: dict) -> dict:
