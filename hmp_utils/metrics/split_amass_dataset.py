@@ -10,7 +10,7 @@ from .. import MocapLoader, BodyModelType
 SEED = 130297
 TEST_SET_PERCENTAGE = 5
 VALID_SET_PERCENTAGE = 5
-TARGET_FRAMERATE = 120
+TARGET_FRAMERATE = 60
 MIN_MOCAP_FRAMES = TARGET_FRAMERATE * 3  # 3 seconds
 
 # In the sub datasets present in AMASS_DATASETS_BY_SUBJECT the train, validation and
@@ -18,7 +18,7 @@ MIN_MOCAP_FRAMES = TARGET_FRAMERATE * 3  # 3 seconds
 AMASS_DATASETS_BY_SUBJECT = [
     "BMLmovi",
     "BMLrub",
-    "EyesJapanDataset/Eyes_Japan_Dataset",
+    "EyesJapanDataset",
     "HDM05",
     "MoSh",
     "TotalCapture",
@@ -79,14 +79,26 @@ def get_sets_indexes_dict(
     }
 
 
+def is_valid_mocap(mocap_str: str) -> bool:
+    return (
+        mocap_str.endswith(".npz")
+        and "stagei.npz" not in mocap_str
+        and "shape.npz" not in mocap_str
+    )
+
+
 def get_num_frames(mocap_path: str, mocap_loader: MocapLoader) -> int:
     """
-    Returns the number of frames in a mocap file.
+    Returns the number of frames in a mocap file if it has enough frames to be downsampled, otherwise -1.
     ---
     ### Args:
     - `mocap_path` (str): path to the mocap file.
     """
     mocap = mocap_loader.load_mocap(mocap_path)
+    if mocap is None:
+        print("Error loading", mocap_path, "(not enough frames)")
+        return -1  # if the mocap file doesn't have enough frames
+
     return mocap.trans.shape[0]  # trans: translation of root joint (num_frames, 1, 3)
 
 
@@ -109,8 +121,7 @@ def get_mocap_lists_by_dataset(dataset_list: list, mocap_loader: MocapLoader) ->
                 entry.path
                 for entry in os.scandir(subject)
                 if entry.is_file()
-                and entry.name.endswith(".npz")
-                and "ei.npz" not in entry.name
+                and is_valid_mocap(entry.name)
                 and get_num_frames(entry.path, mocap_loader) >= MIN_MOCAP_FRAMES
             ]
             mocap_list_by_subject.append(mocap_list)
@@ -163,7 +174,7 @@ def get_few_mocaps_subject_list(dataset: list) -> list:
     - `dataset` (list): list of subjects in a dataset.
     """
     num_files = [
-        sum(file.endswith(".npz") and "ei.npz" not in file for file in files)
+        sum(is_valid_mocap(file) for file in files)
         for subject in dataset
         for root, dirs, files in os.walk(subject)
     ]  # number of mocaps for each subject
@@ -172,7 +183,7 @@ def get_few_mocaps_subject_list(dataset: list) -> list:
         subject
         for subject in dataset
         for root, dirs, files in os.walk(subject)
-        if sum(file.endswith(".npz") and "ei.npz" not in file for file in files)
+        if sum(is_valid_mocap(file) for file in files)
         < mean_num_files * 0.5  # if the number of mocaps is less than half the mean
     ]
 
@@ -189,8 +200,10 @@ def split_amass_dataset(
     If `sets_by_dataset_dict_file_name` is not None, the dictionary is saved to a file.
     ---
     ### Args:
-    - `amass_directory` (str): path to the AMASS dataset root directory.
-    - `sets_by_dataset_dict_file_name` (str): name (with path) of the file containing the dictionary.
+    - `amass_directory` (str): absolute path to the AMASS dataset root directory.
+    - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
+        the file containing the dictionary. If None, the dictionary is not saved to a file.
+        Example: '/path/to/folder/sets_by_dataset_dict'.
     - `test_set_percentage` (float): percentage of samples to be used for the test set.
     - `valid_set_percentage` (float): percentage of samples to be used for the validation set.
     """
@@ -210,9 +223,9 @@ def split_amass_dataset(
         for subdataset in value:
             subject_list_by_dataset.append(
                 [
-                    os.path.join(subdataset, dir)
-                    for dir in os.listdir(subdataset)
-                    if os.path.isdir(os.path.join(subdataset, dir))
+                    dirpath
+                    for dirpath, _, filenames in os.walk(subdataset)
+                    if any(filename.endswith(".npz") for filename in filenames)
                 ]
             )
         subject_list_by_dataset_dict[key] = subject_list_by_dataset
@@ -290,6 +303,10 @@ def split_amass_dataset(
         # Convert the dictionary to JSON format
         json_data = json.dumps(sets_by_dataset_dict)
 
+        # Create the directories if they don't exist
+        directory = os.path.dirname(sets_by_dataset_dict_file_name)
+        os.makedirs(directory, exist_ok=True)
+
         # Save the JSON to a file
         with open(sets_by_dataset_dict_file_name + ".json", "w") as file:
             file.write(json_data)
@@ -303,7 +320,8 @@ def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str) -> dict:
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
     ---
     ### Args:
-    - `sets_by_dataset_dict_file_name` (str): name of the file containing the dictionary.
+    - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
+        the file containing the dictionary.
     """
     with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
         json_data = file.read()
