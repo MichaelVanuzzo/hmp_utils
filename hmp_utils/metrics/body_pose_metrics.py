@@ -184,10 +184,13 @@ class MetricsProcessor:
         aa_diff = RotConvert.rotmat2aa(rot_diff)
         angles = np.linalg.norm(aa_diff, axis=1)
 
-        angles = np.reshape(angles, return_shape)  # (..., n_joints)
+        angles = np.reshape(angles, return_shape)[
+            ..., self.joints_to_compute
+        ]  # (..., n_joints)
+
         if not single_joint_errors:
             # average over the joints
-            angles = np.mean(angles[..., self.joints_to_compute], axis=-1)
+            angles = np.mean(angles, axis=-1)  # (..., )
 
         return angles
 
