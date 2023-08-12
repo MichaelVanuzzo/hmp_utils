@@ -25,25 +25,45 @@ class Table:
         - header (list): list of the columns names.
         - index (list): list of the row names.
         """
-        self.data = data
+        # expand dims if the data is 1-dimensional
+        if data.ndim == 1:
+            self.data = np.expand_dims(data,axis=0)
+        elif data.ndim == 2:
+            self.data = data
+        else:
+            raise Exception(f"The data has the wrong number of dimensions,"
+                            f" use 1d or 2d array (ndim = {data.ndim})")
+        row_num, col_num = self.data.shape
+        
         self.table_name = table_name
-        self.header = header
-        self.index = index
-        # check if the input is valid
-        if len(index) != data.shape[0]:
+        
+        # create index if missing
+        if index == None:
+            index = [f"Row [{i}]" for i in range(row_num)]
+        # check if the index is valid
+        if len(index) != row_num:
             raise Exception(
                 f"The index must have the same number of elements as the rows in data\n"
                 f"index = {len(index)}\n"
-                f"rows = {data.shape[0]}\n"
+                f"rows = {row_num}\n"
             )
-        if len(header) != data.shape[1]:
+        self.index = index
+
+        # create header if missing
+        if header == None:
+            header = [f"Col [{i}]" for i in range(col_num)]
+        # check if the header is valid
+        if len(header) != col_num:
             raise Exception(
                 f"The header must have the same number of elements as the columns in data\n"
                 f"header = {len(header)}\n"
-                f"columns = {data.shape[1]}\n"
+                f"columns = {col_num}\n"
             )
+        self.header = header
+        
+        # other options
         pd.options.display.float_format = "{: 6.3f} |".format
-        pd.options.display.max_columns = len(header)
+        pd.options.display.max_columns = col_num
         self.max_width = 100
 
     def print(
