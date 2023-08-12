@@ -1,4 +1,5 @@
 from .common.rot_convert import RotConvert
+from .common.table import Table
 
 from .motion.body_models_constants import (
     BodyModelType,
