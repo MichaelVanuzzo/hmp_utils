@@ -25,6 +25,14 @@ class SrnnEvaluationFrames:
         Find frames indices for standard evaluation with human3.6m dataset.
         Adapted from https://github.com/asheshjain399/RNNexp/blob/master/structural_rnn/CRFProblems/H3.6m/processdata.py#L325
         to find the same indices as in SRNN.
+
+        ---
+        ### Args:
+        - `len_subaction_1` (int): number of frames of subaction number 1.
+        - `len_subaction_2` (int): number of frames of subaction number 2.
+        ---
+        ### Returns:
+        - `idxs` (list): list of start indices.
         """
 
         # Same seed as https://github.com/asheshjain399/RNNexp/blob/srnn/structural_rnn/forecastTrajectories.py#L29
@@ -40,17 +48,21 @@ class SrnnEvaluationFrames:
         return idxs
 
     @staticmethod
-    def get_h36m_frames(
+    def get_frames(
         len_subaction_1: int, len_subaction_2: int, input_len: int, output_len: int
     ) -> np.ndarray:
         """
         Returns a numpy array (subaction, bach, frame) with the frames selected for evaluation as in srnn.
+
         ---
         ### Args:
         - `len_subaction_1` (int): number of frames of subaction number 1.
         - `len_subaction_2` (int): number of frames of subaction number 2.
         - `input_len` (int): number of input frames.
         - `output_len` (int): number of output frames.
+        ---
+        ### Returns:
+        - `frame_idxs` (np.ndarray): array of shape (subaction, bach, frame) with the frames selected for evaluation.
         """
 
         if input_len > PREFIX:
@@ -85,11 +97,15 @@ class AmassEvaluationFrames:
     @staticmethod
     def get_start_indices(mocap_len: int, seq_len: int) -> list:
         """
-        Find start frames indices for standard evaluation with AMASS dataset.
+        Return start frames indices for standard evaluation with AMASS dataset.
+
         ---
         ### Args:
         - `mocap_len` (int): number of frames of the mocap.
         - `seq_len` (int): length of the sequence in frames.
+        ---
+        ### Returns:
+        - `frame_idxs` (list): list of start indices.
         """
         rng = np.random.RandomState(AMASS_EVALUATION_SEED)
 
@@ -129,12 +145,16 @@ class AmassEvaluationFrames:
     ) -> list:
         """
         Returns a list of lists (num_mocap, num_seq) of frame indices selected for evaluation.
+
         ---
         ### Args:
         - `num_frames_list` (list or np.ndarray): list of number of frames of the mocaps.
         - `input_len` (int): number of input frames.
         - `output_len` (int): number of output frames.
         - `framerate` (int): framerate of the mocaps.
+        ---
+        ### Returns:
+        - `frame_idxs_list` (list): list of lists (num_mocap, batch, frame) of frame indices selected for evaluation.
         """
         if input_len > AMASS_INPUT_SEQ_LEN * framerate:
             raise ValueError(
@@ -165,24 +185,28 @@ class AmassEvaluationFrames:
     ) -> list:
         """
         Returns a list of lists (num_mocap, num_seq) of frame indices selected for the spectrum comparison.
+
         ---
         ### Args:
         - `num_frames_list` (list or np.ndarray): list of number of frames of the mocaps.
         - `framerate` (int): framerate of the mocaps.
         - `seq_len` (float): length of the sequence in seconds.
+        ---
+        ### Returns:
+        - `frame_idxs_list` (list): list of lists (num_mocap, batch, frame) of frame indices selected for the spectrum comparison.
         """
-        if seq_len > AMASS_SEQ_LEN * framerate:
+        if seq_len > AMASS_SEQ_LEN:
             raise ValueError(
-                "seq_len must be smaller than or equal to AMASS_SEQ_LEN(3s) * framerate"
+                "seq_len must be smaller than or equal to AMASS_SEQ_LEN(3s)"
             )
 
         frame_idxs_list = []
         for num_frames in num_frames_list:
             frame_idxs = []
             for start_idx in AmassEvaluationFrames.get_start_indices(
-                mocap_len=num_frames, seq_len=seq_len
+                mocap_len=num_frames, seq_len=seq_len * framerate
             ):
-                frame_idxs.append(range(start_idx, start_idx + seq_len))
+                frame_idxs.append(range(start_idx, start_idx + seq_len * framerate))
             frame_idxs_list.append(frame_idxs)
 
         if (

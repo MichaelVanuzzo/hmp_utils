@@ -18,6 +18,11 @@ from .. import ForwardKinematics, FkReturnType
 
 
 class MetricsProcessor:
+    """
+    Compute errors between predictions and targets.
+
+    """
+
     def __init__(
         self,
         predictions: Union[list, np.ndarray],
@@ -30,11 +35,11 @@ class MetricsProcessor:
 
         ---
         ### Args:
-        - predictions (ndarray): array of predicted joint relative angles in
+        - predictions (list, ndarray): array of predicted joint relative angles in
             the angle-axis representation with shape (batch_size, num_frames,
             num_keypoints, 3)
-        - targets (ndarray): same shape and representation of predictions
-        - joints_to_compute (array-like, optional): joints for which to return the joint angle differences (as single joints or
+        - targets (list, ndarray): same shape and representation of predictions
+        - joints_to_compute (list, ndarray)(optional): joints for which to return the joint angle differences (as single joints or
             averaged over the joints depending on the `single_joint_errors` parameter)
         """
         if not isinstance(predictions, np.ndarray):
@@ -69,12 +74,23 @@ class MetricsProcessor:
     ) -> np.ndarray:
         """
         Computes the Euler angle error as the Euclidean distance between flattened body pose (vectors
-            with shape (n_joints*3)) or as the mean of the single joint distances (mean over n_joints
-            and vectors with shape (3)).
+        with shape (n_joints*3)) or as the mean of the single joint distances (mean over n_joints
+        and vectors with shape (3)).
 
         The the return shape looks like (..., ).
 
         If the joints to metric are not specified all the joints will be used to calculate the error.
+
+        ---
+        ### Args:
+        - `euler_seq` (str): the euler sequence to use for the conversion
+        - `errors_computed_per_joint` (bool): whether to compute the euclidean distance for each
+            joint separately or to compute the euclidean distance on the whole body pose vector
+        - `joint_weights` (list, ndarray)(optional): the weights to use to average the errors over the
+            joints. Must have the same length as the joints_to_compute list
+        ---
+        ### Returns:
+        The euclidean distances between predictions and targets. Return shape:(..., )
         """
         # save the first part of the shape in order to return (..., )
         return_shape = self.targets_aa.shape[:-2]
@@ -119,13 +135,13 @@ class MetricsProcessor:
             euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=-1)
             euc_distance = np.reshape(euc_distance, return_shape)  # (..., )
 
-        return euc_distance
+        return euc_distance  # (..., )
 
     def joint_angle_difference(
         self,
         use_global_rotations: bool = False,
         single_joint_errors: bool = False,
-        f_kinematics_processor: Optional[ForwardKinematics] = None,
+        f_kinematics_processor: ForwardKinematics = None,
     ) -> np.ndarray:
         """
         Compute the angle needed to align each joint in the predictions to the targets.
@@ -138,10 +154,9 @@ class MetricsProcessor:
         ### Args:
         - `use_global_rotations` (bool): compute global rotations given the fk processor object
         - `single_joint_errors` (bool): return shape is (..., n_joints)
-        - `f_kinematics_processor` (ForwardKinematics, optional): the kinematics object used to
+        - `f_kinematics_processor` (ForwardKinematics): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations. This is done to compute the global rotations
-
         ---
         ### Returns:
         By default the mean geodesic distance for each joint as an np array of shape (..., ); but
@@ -197,7 +212,7 @@ class MetricsProcessor:
     def positional_error(
         self,
         f_kinematics_processor: ForwardKinematics,
-        joint_to_normalize: Optional[int] = None,
+        joint_to_normalize: int = None,
         single_joint_errors: bool = False,
     ) -> np.ndarray:
         """
@@ -212,10 +227,9 @@ class MetricsProcessor:
         - `f_kinematics_processor` (ForwardKinematics): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations.
-        - single_joint_errors (bool): whether to return the distances averaged over the keypoints
-        - joint_to_normalize (int, optional): chose a joint which length should be normalized to 1, which
+        - joint_to_normalize (int): chose a joint which length should be normalized to 1, which
             scale factor is used to scale all the other body links
-
+        - single_joint_errors (bool): whether to return the distances averaged over the keypoints
         ---
         ### Return:
         The euclidean distances between predictions and targets. Return shape:
@@ -264,6 +278,8 @@ class MetricsProcessor:
 
 class MetricsPostProcessor:
     """
+    Compute metrics on the errors tensor.
+
     Some of the metrics were inspired by [SPL - Structured Prediction Layer Helps 3D Human Motion \
     Modelling](https://ait.ethz.ch/projects/2019/spl/downloads/spl_iccv19.pdf)
     """
@@ -272,7 +288,7 @@ class MetricsPostProcessor:
         """
         Expects an array of errors of shape: (..., num_frames), if more than one dimension,
         performs an averaging over all the first dimensions, so that a single vector of shape
-        (num_frames,) remains
+        (num_frames) remains.
 
         ---
         ### Args:
@@ -280,10 +296,22 @@ class MetricsPostProcessor:
             (..., num_frames) in which case the mean over all the dimensions (except for the last) is computed.
         """
 
-        self.errors = self.mean_error_over_frames(errors_tensor)
+        self.errors = self.__mean_error_over_frames(errors_tensor)
 
     @staticmethod
-    def mean_error_over_frames(errors_tensor: Union[list, np.ndarray]) -> np.ndarray:
+    def __mean_error_over_frames(errors_tensor: Union[list, np.ndarray]) -> np.ndarray:
+        """
+        Compute the mean error over the frames of the given errors tensor, that is to say that
+        the mean over all the dimensions (except for the last) is computed.
+
+        ---
+        ### Args:
+        - `errors_tensor` (list, ndarray): array of errors as a tensor of shape (..., num_frames)
+            or (num_frames)
+        ---
+        ### Returns:
+        The mean error over the frames of the given errors tensor.
+        """
         # Convert to numpy array
         if not isinstance(errors_tensor, np.ndarray):
             errors = np.array(errors_tensor)
@@ -292,24 +320,30 @@ class MetricsPostProcessor:
 
         # Average over the dimensions other than last if necessary
         if len(errors.shape) > 1:
-            # compute a vector of euler errors for each frame
+            # compute a vector of errors for each frame
             axes_to_mean = tuple(i for i in range(len(errors.shape[:-1])))
             errors = np.mean(errors_tensor, axes_to_mean)
         return errors
 
     def cumulative(
-        self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
-    ):
+        self, start_frame: int = 0, end_frame: int = None, normalize=False
+    ) -> float:
         """
-        Compute cumulative error from the start of the sequence. If `end_frame` is provided, returns
-        the cumulative error summed up until the `end_frame`, excluded. If `end_frame` is not specified,
-        returns the cumulative error including last frame. If `normalize` is True, the cumulative error
-        is normalized by the number of frames.
+        Compute cumulative error from the start of the sequence.
+
+        If `end_frame` is provided, returns the cumulative error summed up until the `end_frame`,
+        excluded. If `end_frame` is not specified, returns the cumulative error including last frame.
+
+        If `normalize` is True, the cumulative error is normalized by the number of frames.
 
         ---
         ### Args:
         - `start_frame` (int): the frame at which to start the cumulation (including the specified frame).
         - `end_frame` (int): the frame at which to sum up to (including the specified frame).
+        - `normalize` (bool): whether to normalize the cumulative error by the number of frames.
+        ---
+        ### Returns:
+        The cumulative error from the start of the sequence.
         """
         if end_frame is None:
             # cumulate including the last frame
@@ -324,23 +358,35 @@ class MetricsPostProcessor:
 
         return error_sum
 
-    def instant(self, at_frame: int):
+    def instant(self, at_frame: int) -> float:
         """
-        Return the Euler error at a specified frame.
+        Return the error at a specified frame.
+
+        ---
+        ### Args:
+        - `at_frame` (int): the frame at which to return the error.
+        ---
+        ### Returns:
+        The error at the specified frame.
         """
         self.__is_valid_frame(at_frame)
         return self.errors[at_frame]
 
-    def windowed_mean(self, at_frame: int, window_len_frames: Optional[int] = None):
+    def windowed_mean(self, at_frame: int, window_len_frames: int = None) -> float:
         """
         Compute the mean error in a window with the specified number of frames prior to
         the specified frame (included in the window).
 
+        If `window_len_frames` is none, return the average over all the previous frames.
+
         ---
         ### Args:
-        - `at_frame`: the frame at which the averaging window ends
-
-        If `window_len_frames` is none, return the average over all the previous frames.
+        - `at_frame` (int): the frame at which the averaging window ends
+        - `window_len_frames` (int): the length of the averaging window in frames. If not specified,
+            the average over all the previous frames is returned.
+        ---
+        ### Returns:
+        The mean error in the window with the specified number of frames prior to the specified
         """
 
         at_frame = self.__is_valid_frame(at_frame)
@@ -353,15 +399,21 @@ class MetricsPostProcessor:
 
     def __is_valid_frame(self, frame: int) -> int:
         """
-        Check whether the frame is a valid index for the Euler errors vector.
+        Check whether the frame is a valid index for the errors vector.
 
-        Always returns the equivalent positive index
+        ---
+        ### Args:
+        - `frame` (int): the frame index to check
+        ---
+        ### Returns:
+        The frame index if valid (always the equivalent positive index),
+        otherwise raises an exception.
         """
         num_frames = self.errors.shape[-1]
         if frame not in range(-num_frames, num_frames):
             raise Exception(
                 f"Provided frame index is not valid: {frame}. "
-                f"Number of frames in euler errors array: {num_frames}"
+                f"Number of frames in errors array: {num_frames}"
             )
         if frame < 0:
             return len(self.errors + frame)
@@ -417,8 +469,10 @@ class SpectrumMetricsProcessor:
             seq_ps_global, (-1, n_joints, feature_size)
         )  # (seq_len, n_joints, 3)
 
-    @staticmethod
-    def ps_entropy(seq, is_t_seq=False, get_mean=True) -> Union[float, np.array]:
+    @staticmethod  # TODO all here
+    def ps_entropy(
+        seq: Union[list, np.ndarray], is_t_seq: bool = False, get_mean: bool = True
+    ) -> Union[float, np.ndarray]:
         """
         Compute the entropy of the power spectrum.
 
@@ -430,6 +484,9 @@ class SpectrumMetricsProcessor:
         Returns:
             float or (n_joints, 3) if get_mean is False
         """
+        if not isinstance(seq, np.ndarray):
+            seq = np.array(seq)
+
         if is_t_seq:
             seq_ps = SpectrumMetricsProcessor.power_spectrum(
                 seq
@@ -445,8 +502,11 @@ class SpectrumMetricsProcessor:
 
     @staticmethod
     def kl_divergence(
-        seq_from, seq_to, is_t_seq=False, get_mean=True
-    ) -> Union[float, np.array]:
+        seq_from: Union[list, np.ndarray],
+        seq_to: np.ndarray,
+        is_t_seq: bool = False,
+        get_mean: bool = True,
+    ) -> Union[float, np.ndarray]:
         """
         Compute the KL(Kullback–Leibler) divergence between two power spectrums.
 
@@ -459,6 +519,10 @@ class SpectrumMetricsProcessor:
         Returns:
             float or (n_joints, 3) if get_mean is False
         """
+        if not isinstance(seq_from, np.ndarray):
+            seq_from = np.array(seq_from)
+        if not isinstance(seq_to, np.ndarray):
+            seq_to = np.array(seq_to)
 
         if is_t_seq:
             seq_ps_from = SpectrumMetricsProcessor.power_spectrum(
@@ -482,8 +546,11 @@ class SpectrumMetricsProcessor:
 
     @staticmethod
     def js_divergence(
-        seq_g, seq_h, is_t_seq=False, get_mean=True
-    ) -> Union[float, np.array]:
+        seq_g: Union[list, np.ndarray],
+        seq_h: Union[list, np.ndarray],
+        is_t_seq: bool = False,
+        get_mean: bool = True,
+    ) -> Union[float, np.ndarray]:
         """
         Compute the JS (Jensen-Shannon) divergence between two power spectrums.
 
@@ -496,6 +563,10 @@ class SpectrumMetricsProcessor:
         Returns:
             float or (n_joints, 3) if get_mean is False
         """
+        if not isinstance(seq_g, np.ndarray):
+            seq_g = np.array(seq_g)
+        if not isinstance(seq_h, np.ndarray):
+            seq_h = np.array(seq_h)
 
         if is_t_seq:
             seq_ps_g = SpectrumMetricsProcessor.power_spectrum(
@@ -524,8 +595,11 @@ class SpectrumMetricsProcessor:
 
     @staticmethod
     def wasserstein_distance(
-        seq_u, seq_v, is_t_seq=False, get_mean=True
-    ) -> Union[float, np.array]:
+        seq_u: Union[list, np.ndarray],
+        seq_v: Union[list, np.ndarray],
+        is_t_seq: bool = False,
+        get_mean: bool = True,
+    ) -> Union[float, np.ndarray]:
         """
         Compute the Wasserstein distance between two power spectrums.
 
@@ -538,6 +612,10 @@ class SpectrumMetricsProcessor:
         Returns:
             float or (n_joints, 3) if get_mean is False
         """
+        if not isinstance(seq_u, np.ndarray):
+            seq_u = np.array(seq_u)
+        if not isinstance(seq_v, np.ndarray):
+            seq_v = np.array(seq_v)
 
         feature_size = seq_u.shape[-1]
         n_joints = seq_u.shape[-2]
