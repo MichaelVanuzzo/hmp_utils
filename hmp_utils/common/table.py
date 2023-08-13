@@ -2,7 +2,7 @@ import os
 import errno
 import pandas as pd
 import numpy as np
-from typing import Optional
+from typing import Optional, Union
 
 
 class Table:
@@ -27,16 +27,18 @@ class Table:
         """
         # expand dims if the data is 1-dimensional
         if data.ndim == 1:
-            self.data = np.expand_dims(data,axis=0)
+            self.data = np.expand_dims(data, axis=0)
         elif data.ndim == 2:
             self.data = data
         else:
-            raise Exception(f"The data has the wrong number of dimensions,"
-                            f" use 1d or 2d array (ndim = {data.ndim})")
+            raise Exception(
+                f"The data has the wrong number of dimensions,"
+                f" use 1d or 2d array (ndim = {data.ndim})"
+            )
         row_num, col_num = self.data.shape
-        
+
         self.table_name = table_name
-        
+
         # create index if missing
         if index == None:
             index = [f"Row [{i}]" for i in range(row_num)]
@@ -60,7 +62,7 @@ class Table:
                 f"columns = {col_num}\n"
             )
         self.header = header
-        
+
         # other options
         pd.options.display.float_format = "{: 6.3f} |".format
         pd.options.display.max_columns = col_num
@@ -72,7 +74,7 @@ class Table:
         columns: Optional[list] = None,
         header: Optional[list] = None,
         to_string: Optional[bool] = False,
-    ) -> None | str:
+    ) -> Union[None, str]:
         """
         ### Description:
         - Print the selected rows and columns of the table.
@@ -127,7 +129,7 @@ class Table:
         ms_to_print: list,
         framerate: float,
         to_string: Optional[bool] = False,
-    ) -> None | str:
+    ) -> Union[None, str]:
         """
         ### Description:
         - Print the frames (columns) at specified times.
@@ -148,14 +150,14 @@ class Table:
         header = [f"{ms} ms" for ms in ms_to_print]
 
         # if the aren't that many frames in the data skip the extra ones
-        temp_frames_to_print=[]
+        temp_frames_to_print = []
         for frame in frames_to_print:
-            if frame>=len(self.header):
+            if frame >= len(self.header):
                 break
             else:
                 temp_frames_to_print.append(frame)
-        frames_to_print=temp_frames_to_print
-        header=header[slice(len(frames_to_print))]
+        frames_to_print = temp_frames_to_print
+        header = header[slice(len(frames_to_print))]
 
         return self.print(columns=frames_to_print, header=header, to_string=to_string)
 
