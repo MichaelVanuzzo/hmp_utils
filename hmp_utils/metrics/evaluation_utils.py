@@ -92,6 +92,36 @@ class SrnnEvaluationFrames:
 
         return frame_idxs
 
+    @staticmethod
+    def get_spectrum_frames(
+        num_frames_list: Union[list, np.ndarray],
+        seq_len: float = SPECTRUM_EVALUATION_SEQ_LEN,
+    ) -> list:
+        """
+        Returns a list of lists (num_mocap, num_seq) of frame indices selected for the spectrum comparison.
+        This is an adaptation of the protocol used with the AMASS dataset.
+
+        ---
+        ### Args:
+        - `num_frames_list` (list or np.ndarray): list of number of frames of the mocaps.
+        - `seq_len` (float): length of the sequence in seconds.
+        ---
+        ### Returns:
+        - `frame_idxs_list` (list): list of lists (num_mocap, batch, frame) of frame indices selected for the spectrum comparison.
+        """
+        framerate = 25
+
+        frame_idxs_list = []
+        for num_frames in num_frames_list:
+            frame_idxs = []
+            for start_idx in AmassEvaluationFrames.get_start_indices(
+                mocap_len=num_frames, seq_len=seq_len * framerate
+            ):
+                frame_idxs.append(range(start_idx, start_idx + seq_len * framerate))
+            frame_idxs_list.append(frame_idxs)
+
+        return frame_idxs_list
+
 
 class AmassEvaluationFrames:
     @staticmethod
