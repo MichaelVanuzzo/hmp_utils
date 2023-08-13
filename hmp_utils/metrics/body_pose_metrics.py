@@ -426,48 +426,70 @@ class SpectrumMetricsProcessor:
     """
 
     @staticmethod
-    def power_spectrum(
-        seq_t,
+    def power_spectral_density(
+        seq_t: Union[list, np.ndarray],
+        framerate: float,
+        remove_zero_freq: bool = True,
         normalize: bool = False,
     ) -> np.ndarray:
         """
-        Compute the power spectrum of the given sequence of joint angles.
-        - For amass (60 fps): seq_t = seq_t[:, :, 0:-1:12, :] -> 5 fps #TODO
+        Compute the power spectral density of the given sequence of joint angles.
 
-        Args:
-        seq_t -> (..., seq_len, n_joints, 3)
-        normalize -> whether to normalize the power spectrum
-
-        Returns:
-            (seq_len, n_joints, 3)
+        ---
+        ### Args:
+        - `seq_t` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3)
+        - `framerate` (float): the framerate of the sequence
+        - `remove_zero_freq` (bool): whether to remove the zero frequency component or not
+        - `normalize` (bool): whether to normalize the power spectral density
+        ---
+        ### Returns:
+        The power spectral density of the given sequence of joint angles with shape
+            (ps_len, n_joints, 3)
         """
+        if not isinstance(seq_t, np.ndarray):
+            seq_t = np.array(seq_t)
+
         feature_size = seq_t.shape[-1]
         n_joints = seq_t.shape[-2]
         seq_len = seq_t.shape[-3]
-        batch_size = seq_t.shape[-4]
 
         seq_t = np.reshape(
             seq_t, [-1, seq_len, n_joints * feature_size]
         )  # (batch, seq_len, n_joints*3)
+        batch_size = seq_t.shape[0]
 
         # calculate power spectrum
         seq_fft = np.fft.fft(seq_t, axis=1)  # (batch, seq_len, n_joints*3)
+
+        # remove the zero frequency component or divide by 2 due to the symmetry of the fft
+        if remove_zero_freq:
+            seq_fft[:, 0, :] = 0
+        else:
+            seq_fft[:, 0, :] /= 2
+
+        # remove the second half of the sequence (due to the symmetry of the fft)
+        seq_fft = seq_fft[:, 0 : seq_len // 2, :]
+
         seq_ps = np.abs(seq_fft) ** 2  # (batch, seq_len, n_joints*3)
 
-        seq_ps_global = seq_ps.sum(axis=0)  # (seq_len, n_joints*3)
+        # scale to obtain the power spectral density
+        seq_ps = seq_ps * 2 / (framerate * seq_len)  # (batch, ps_len, n_joints*3)
+
+        seq_ps_global = seq_ps.sum(axis=0)  # (ps_len, n_joints*3)
 
         if normalize:
             norm_values = seq_ps_global.sum(axis=0, keepdims=True)  # (1, n_joints*3)
             norm_values = np.where(
                 norm_values == 0, 1, norm_values
             )  # avoid division by 0
-            seq_ps_global /= norm_values  # (seq_len, n_joints*3)
+            seq_ps_global /= norm_values  # (ps_len, n_joints*3)
         else:
-            seq_ps_global /= batch_size
+            seq_ps_global /= batch_size  # (ps_len, n_joints*3)
 
         return np.reshape(
             seq_ps_global, (-1, n_joints, feature_size)
-        )  # (seq_len, n_joints, 3)
+        )  # (ps_len, n_joints, 3)
 
     @staticmethod  # TODO all here
     def ps_entropy(
