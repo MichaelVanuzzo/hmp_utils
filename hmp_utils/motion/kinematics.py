@@ -76,12 +76,12 @@ class ForwardKinematics:
     def set_body_model_type(self, model_type: BodyModelType):
         """
         The forward kinematics is computed in a different way between SMPL
-        poses and Human2.6M poses.
+        poses and Human3.6M poses.
 
         See `BODY_MODEL_TYPE` in `body_model_constants.py` the classes
         SmplConstants H36MConstants.
-        - For SMPL / AMASS body models pass BodyModelType.smpl
-        - For Human3.6M body model pass BodyModelType.h36m
+        - For SMPL / AMASS body models pass BodyModelType.SMPL
+        - For Human3.6M body model pass BodyModelType.H36M
         """
         if model_type == BodyModelType.SMPL:
             if self.offsets_are_relative is None:
