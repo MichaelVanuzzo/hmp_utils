@@ -45,11 +45,15 @@ def get_sets_indexes_dict(
     """
     Returns a dictionary containing a list of indices for the train, test and validation sets.
     The indices are shuffled randomly.
+
     ---
     ### Args:
     - `samples_num` (int): number of samples.
     - `test_set_percentage` (float): percentage of samples to be used for the test set.
     - `valid_set_percentage` (float): percentage of samples to be used for the validation set.
+    ---
+    ### Returns:
+    - `sets_indexes_dict` (dict): dictionary containing a list of indices for the train, test and validation sets.
     """
 
     # Calculate the number of samples for each set
@@ -80,6 +84,16 @@ def get_sets_indexes_dict(
 
 
 def is_valid_mocap(mocap_str: str) -> bool:
+    """
+    Returns True if the mocap file name is valid, otherwise False.
+
+    ---
+    ### Args:
+    - `mocap_str` (str): mocap file name.
+    ---
+    ### Returns:
+    - `is_valid` (bool): True if the mocap file name is valid, otherwise False.
+    """
     return (
         mocap_str.endswith(".npz")
         and "stagei.npz" not in mocap_str
@@ -90,9 +104,14 @@ def is_valid_mocap(mocap_str: str) -> bool:
 def get_num_frames(mocap_path: str, mocap_loader: MocapLoader) -> int:
     """
     Returns the number of frames in a mocap file if it has enough frames to be downsampled, otherwise -1.
+
     ---
     ### Args:
     - `mocap_path` (str): path to the mocap file.
+    - `mocap_loader` (MocapLoader): mocap loader.
+    ---
+    ### Returns:
+    - `num_frames` (int): number of frames in the mocap file.
     """
     mocap = mocap_loader.load_mocap(mocap_path)
     if mocap is None:
@@ -105,10 +124,14 @@ def get_num_frames(mocap_path: str, mocap_loader: MocapLoader) -> int:
 def get_mocap_lists_by_dataset(dataset_list: list, mocap_loader: MocapLoader) -> list:
     """
     Returns a list of lists of mocap files for each subject in each dataset.
+
     ---
     ### Args:
     - `dataset_list` (list): list of lists of subjects in each dataset.
     - `mocap_loader` (MocapLoader): mocap loader.
+    ---
+    ### Returns:
+    - `mocap_lists_by_dataset` (list): list of lists of mocap files for each subject in each dataset.
     """
     mocap_lists_by_dataset = []
     # Iterate over each dataset in subject_lists_dict["action"]
@@ -133,9 +156,13 @@ def get_random_subject_list_by_dataset(dataset_list: list) -> list:
     """
     Returns a list of lists of subjects for each dataset.
     The subjects are shuffled randomly.
+
     ---
     ### Args:
     - `dataset_list` (list): list of lists of subjects in each dataset.
+    ---
+    ### Returns:
+    - `subject_list_by_dataset` (list): list of lists of subjects for each dataset.
     """
     subject_list_by_dataset = []
     for dataset in dataset_list:
@@ -150,9 +177,13 @@ def get_random_mocap_list_by_dataset(dataset_list: list) -> list:
     """
     Returns a list of lists of mocap files for each subject in each dataset.
     The mocap files are shuffled randomly.
+
     ---
     ### Args:
     - `dataset_list` (list): list of lists of mocap files for each subject in each dataset.
+    ---
+    ### Returns:
+    - `mocap_lists_by_dataset` (list): list of lists of mocap files for each subject in each dataset.
     """
     mocap_lists_by_dataset = []
     for mocap_list_by_subject in dataset_list:
@@ -169,9 +200,13 @@ def get_random_mocap_list_by_dataset(dataset_list: list) -> list:
 def get_few_mocaps_subject_list(dataset: list) -> list:
     """
     Returns a list of subjects with less than half the mean number of mocaps.
+
     ---
     ### Args:
     - `dataset` (list): list of subjects in a dataset.
+    ---
+    ### Returns:
+    - `few_mocaps_subjects` (list): list of subjects with less than half the mean number of mocaps.
     """
     num_files = [
         sum(is_valid_mocap(file) for file in files)
@@ -198,7 +233,9 @@ def split_amass_dataset(
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
+
     If `sets_by_dataset_dict_file_name` is not None, the dictionary is saved to a file.
+
     ---
     ### Args:
     - `amass_directory` (str): absolute path to the AMASS dataset root directory.
@@ -208,6 +245,11 @@ def split_amass_dataset(
     - `use_relative_path` (bool): if True, the mocap paths in the dictionary are relative (default: True).
     - `test_set_percentage` (float): percentage of samples to be used for the test set (default: 5).
     - `valid_set_percentage` (float): percentage of samples to be used for the validation set (default: 5).
+    ---
+    ### Returns:
+    - `sets_by_dataset_dict` (dict): dictionary of dictionaries containing the train,
+        test and validation sets for each sub dataset in AMASS_DATASETS_BY_SUBJECT and
+        AMASS_DATASETS_BY_ACTION.
     """
     subdataset_lists = {
         "subject": AMASS_DATASETS_BY_SUBJECT,
@@ -330,6 +372,7 @@ def load_sets_by_dataset_dict(
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
+
     ---
     ### Args:
     - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
@@ -337,6 +380,11 @@ def load_sets_by_dataset_dict(
         Example: '/path/to/folder/sets_by_dataset_dict'.
     - `amass_directory` (str): absolute path to the AMASS dataset root directory if the
         mocap paths in the dictionary are relative.
+    ---
+    ### Returns:
+    - `sets_by_dataset_dict` (dict): dictionary of dictionaries containing the train,
+        test and validation sets for each sub dataset in AMASS_DATASETS_BY_SUBJECT and
+        AMASS_DATASETS_BY_ACTION.
     """
     with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
         json_data = file.read()
@@ -355,12 +403,16 @@ def load_sets_by_dataset_dict(
 def compute_mocap_info(dataset_name: str, mocap_info_by_set_dict: dict) -> dict:
     """
     Returns a dictionary containing the number of mocaps, frames, and other informations
-    joining the sets in a dataset.
+    joining the sets of a dataset.
+
     ---
     ### Args:
     - `dataset_name` (str): name of the dataset.
     - `mocap_info_by_set_dict` (dict): dictionary of dictionaries containing the number of
     mocaps and frames for each set in a dataset.
+    ---
+    ### Returns:
+    - `mocap_info` (dict): dictionary containing the number of mocaps, frames, and other informations
     """
     dataset_sets_info = [set[dataset_name] for set in mocap_info_by_set_dict.values()]
     return {
@@ -379,10 +431,11 @@ def compute_mocap_info(dataset_name: str, mocap_info_by_set_dict: dict) -> dict:
     }
 
 
-def print_amass_sets_info(sets_by_dataset_dict: dict):
+def print_amass_sets_info(sets_by_dataset_dict: dict) -> None:
     """
     Prints information about the train, test and validation sets for each sub dataset
     in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
+
     ---
     ### Args:
     - `sets_by_dataset_dict` (dict): dictionary of dictionaries containing the train,
