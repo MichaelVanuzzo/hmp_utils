@@ -491,71 +491,79 @@ class SpectrumMetricsProcessor:
             seq_ps_global, (-1, n_joints, feature_size)
         )  # (ps_len, n_joints, 3)
 
-    @staticmethod  # TODO all here
+    @staticmethod
     def ps_entropy(
-        seq: Union[list, np.ndarray], is_t_seq: bool = False, get_mean: bool = True
+        seq: Union[list, np.ndarray], framerate: float = None, get_mean: bool = True
     ) -> Union[float, np.ndarray]:
         """
-        Compute the entropy of the power spectrum.
+        Compute the entropy of the power spectral density.
 
-        Args:
-            seq -> (..., seq_len, n_joints, 3)
-            is_t_seq -> whether the sequence is in time domain or not
-            get_mean -> whether to return the mean of the entropies or all the entropies
-
-        Returns:
-            float or (n_joints, 3) if get_mean is False
+        ---
+        ### Args:
+        - `seq` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `get_mean` (bool): whether to return the mean of the entropies or all the entropies
+        ---
+        ### Returns:
+        The entropy of the power spectral density of the given sequence of joint angles with shape
         """
         if not isinstance(seq, np.ndarray):
             seq = np.array(seq)
 
-        if is_t_seq:
-            seq_ps = SpectrumMetricsProcessor.power_spectrum(
-                seq
-            )  # (seq_len, n_joints, 3)
+        if framerate is not None:
+            seq_ps = SpectrumMetricsProcessor.power_spectral_density(
+                seq, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
         else:
-            seq_ps = seq  # (seq_len, n_joints, 3)
+            seq_ps = seq  # (ps_len, n_joints, 3)
 
         entropy = stats.entropy(seq_ps, base=2, axis=0)  # (n_joints, 3)
         if get_mean:
-            return np.mean(entropy)
+            return np.mean(entropy)  # float
         else:
-            return entropy
+            return entropy  # (n_joints, 3)
 
     @staticmethod
     def kl_divergence(
         seq_from: Union[list, np.ndarray],
         seq_to: np.ndarray,
-        is_t_seq: bool = False,
+        framerate: float = None,
         get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
         """
-        Compute the KL(Kullback–Leibler) divergence between two power spectrums.
+        Compute the KL(Kullback-Leibler) divergence between two power spectral densities.
 
-        Args:
-            seq_from -> (..., seq_len, n_joints, 3)
-            seq_to -> (..., seq_len, n_joints, 3)
-            is_t_seq -> whether the sequences are in time domain or not
-            get_mean -> whether to return the mean of the kl divergences or all the divergences
-
-        Returns:
-            float or (n_joints, 3) if get_mean is False
+        ---
+        ### Args:
+        - `seq_from` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `seq_to` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `get_mean` (bool): whether to return the mean of the kl divergences or all the divergences
+        ---
+        ### Returns:
+        The KL divergence between the two power spectral densities.
         """
         if not isinstance(seq_from, np.ndarray):
             seq_from = np.array(seq_from)
         if not isinstance(seq_to, np.ndarray):
             seq_to = np.array(seq_to)
 
-        if is_t_seq:
-            seq_ps_from = SpectrumMetricsProcessor.power_spectrum(
-                seq_from
-            )  # (seq_len, n_joints, 3)
-            seq_ps_to = SpectrumMetricsProcessor.power_spectrum(
-                seq_to
-            )  # (seq_len, n_joints, 3)
+        if framerate is not None:
+            seq_ps_from = SpectrumMetricsProcessor.power_spectral_density(
+                seq_from, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
+            seq_ps_to = SpectrumMetricsProcessor.power_spectral_density(
+                seq_to, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
         else:
-            seq_ps_from = seq_from  # (seq_len, n_joints, 3)
-            seq_ps_to = seq_to  # (seq_len, n_joints, 3)
+            seq_ps_from = seq_from  # (ps_len, n_joints, 3)
+            seq_ps_to = seq_to  # (ps_len, n_joints, 3)
 
         kl_divergence = stats.entropy(
             pk=seq_ps_from, qk=seq_ps_to, base=2, axis=0
@@ -570,45 +578,47 @@ class SpectrumMetricsProcessor:
     def js_divergence(
         seq_g: Union[list, np.ndarray],
         seq_h: Union[list, np.ndarray],
-        is_t_seq: bool = False,
+        framerate: float = None,
         get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
         """
-        Compute the JS (Jensen-Shannon) divergence between two power spectrums.
+        Compute the JS (Jensen-Shannon) divergence between two power spectral densities.
 
-        Args:
-            seq_from -> (..., seq_len, n_joints, 3)
-            seq_to -> (..., seq_len, n_joints, 3)
-            is_t_seq -> whether the sequences are in time domain or not
-            get_mean -> whether to return the mean of the js divergences or all the divergences
-
-        Returns:
-            float or (n_joints, 3) if get_mean is False
+        ---
+        ### Args:
+        - `seq_g` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `seq_h` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `get_mean` (bool): whether to return the mean of the js divergences or all the divergences
+        ---
+        ### Returns:
+        The JS divergence between the two power spectral densities.
         """
         if not isinstance(seq_g, np.ndarray):
             seq_g = np.array(seq_g)
         if not isinstance(seq_h, np.ndarray):
             seq_h = np.array(seq_h)
 
-        if is_t_seq:
-            seq_ps_g = SpectrumMetricsProcessor.power_spectrum(
-                seq_g
-            )  # (seq_len, n_joints, 3)
-            seq_ps_h = SpectrumMetricsProcessor.power_spectrum(
-                seq_h
-            )  # (seq_len, n_joints, 3)
+        if framerate is not None:
+            seq_ps_g = SpectrumMetricsProcessor.power_spectral_density(
+                seq_g, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
+            seq_ps_h = SpectrumMetricsProcessor.power_spectral_density(
+                seq_h, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
         else:
-            seq_ps_g = seq_g  # (seq_len, n_joints, 3)
-            seq_ps_h = seq_h  # (seq_len, n_joints, 3)
+            seq_ps_g = seq_g  # (ps_len, n_joints, 3)
+            seq_ps_h = seq_h  # (ps_len, n_joints, 3)
 
+        smp = SpectrumMetricsProcessor
         jd_divergence = (
-            SpectrumMetricsProcessor.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2)
-            / 2
-            + SpectrumMetricsProcessor.kl_divergence(
-                seq_ps_h, (seq_ps_g + seq_ps_h) / 2
-            )
-            / 2
-        )
+            smp.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2) / 2
+            + smp.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2) / 2
+        )  # (n_joints, 3)
 
         if get_mean:
             return np.mean(jd_divergence)  # float
@@ -619,46 +629,76 @@ class SpectrumMetricsProcessor:
     def wasserstein_distance(
         seq_u: Union[list, np.ndarray],
         seq_v: Union[list, np.ndarray],
-        is_t_seq: bool = False,
+        framerate: float = None,
+        time_window_len: float = 1,
         get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
         """
-        Compute the Wasserstein distance between two power spectrums.
+        Compute the Wasserstein distance between two distributions.
 
-        Args:
-            seq_u -> (..., seq_len, n_joints, 3)
-            seq_v -> (..., seq_len, n_joints, 3)
-            is_t_seq -> whether the sequences are in time domain or not
-            get_mean -> whether to return the mean of the wasserstein distances or all the distances
-
-        Returns:
-            float or (n_joints, 3) if get_mean is False
+        ---
+        ### Args:
+        - `seq_u` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `seq_v` (list, ndarray): sequence of joint angles in time domain with shape
+            (..., seq_len, n_joints, 3) or normalized power spectral density with shape
+            (..., ps_len, n_joints, 3)
+        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `time_window_len` (float): the length of the time window in seconds
+        - `get_mean` (bool): whether to return the mean of the wasserstein distances or all the
+            distances
+        ---
+        ### Returns:
+        The Wasserstein distance between the two distributions.
         """
+
         if not isinstance(seq_u, np.ndarray):
             seq_u = np.array(seq_u)
         if not isinstance(seq_v, np.ndarray):
             seq_v = np.array(seq_v)
 
-        feature_size = seq_u.shape[-1]
-        n_joints = seq_u.shape[-2]
+        # # Implementation of the Wasserstein distance using scipy.stats.wasserstein_distance with a trick
+        # feature_size = seq_u.shape[-1]
+        # n_joints = seq_u.shape[-2]
 
-        if is_t_seq:
-            seq_ps_u = SpectrumMetricsProcessor.power_spectrum(
-                seq_u, normalize=True
-            )  # (seq_len, n_joints, 3)
-            seq_ps_v = SpectrumMetricsProcessor.power_spectrum(
-                seq_v, normalize=True
-            )  # (seq_len, n_joints, 3)
+        if framerate is not None:
+            seq_ps_u = SpectrumMetricsProcessor.power_spectral_density(
+                seq_u, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
+            seq_ps_v = SpectrumMetricsProcessor.power_spectral_density(
+                seq_v, framerate, normalize=True
+            )  # (ps_len, n_joints, 3)
         else:
-            seq_ps_u = seq_u  # (seq_len, n_joints, 3)
-            seq_ps_v = seq_v  # (seq_len, n_joints, 3)
+            seq_ps_u = seq_u  # (ps_len, n_joints, 3)
+            seq_ps_v = seq_v  # (ps_len, n_joints, 3)
 
-        w_distance = np.zeros((n_joints, feature_size))  # (n_joints, 3)
-        for i in range(n_joints):
-            for j in range(feature_size):
-                w_distance[i][j] = stats.wasserstein_distance(
-                    seq_ps_u[:, i, j], seq_ps_v[:, i, j]
-                )
+        if seq_ps_u.shape != seq_ps_v.shape:
+            raise Exception(
+                "The power spectrums must have the same shape to compute the wasserstein distance"
+            )
+
+        # # Implementation of the Wasserstein distance using scipy.stats.wasserstein_distance with a trick
+        # ps_len = seq_ps_u.shape[0]
+        # frequencies = np.arange(ps_len) / time_window_len  # (ps_len, )
+        # w_distance = np.zeros((n_joints, feature_size))  # (n_joints, 3)
+        # for i in range(n_joints):
+        #     for j in range(feature_size):
+        #         w_distance[i][j] = stats.wasserstein_distance(
+        #             frequencies,
+        #             frequencies,
+        #             seq_ps_u[:, i, j],
+        #             seq_ps_v[:, i, j],
+        #         )
+
+        # Compute the cumulative sum of the power spectral densities
+        seq_ps_u = np.cumsum(seq_ps_u, axis=0)  # (ps_len, n_joints, 3)
+        seq_ps_v = np.cumsum(seq_ps_v, axis=0)  # (ps_len, n_joints, 3)
+
+        # Compute the Wasserstein distance
+        w_distance = np.sum(
+            np.abs(seq_ps_u - seq_ps_v) / time_window_len, axis=0
+        )  # (n_joints, 3)
 
         if get_mean:
             return np.mean(w_distance)  # float
