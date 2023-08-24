@@ -6,12 +6,16 @@ class RotConvert:
     DEFAULT_EULER_SEQ = "zxy"
 
     @staticmethod
-    def rotmat2euler(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
+    def rotmat2euler(
+        input_seq, eul_seq: str = DEFAULT_EULER_SEQ, eul_degrees: bool = False
+    ) -> np.ndarray:
         """
         Convert rotation matrix representation into Euler angle, with selected Euler sequence
         Shapes: from (..., 3, 3) to (..., 3, 3)
 
         Default Euler sequence is zxy
+
+        Default Euler unit is radians
         """
         if not isinstance(input_seq, np.ndarray):
             input_seq = np.array(input_seq)
@@ -22,18 +26,22 @@ class RotConvert:
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3, 3))
         rotation = Rotation.from_matrix(input_seq)
-        euler_seq = rotation.as_euler(seq=eul_seq)
+        euler_seq = rotation.as_euler(seq=eul_seq, degrees=eul_degrees)
 
         # restore original shape
         return np.reshape(euler_seq, orig_shape)
 
     @staticmethod
-    def aa2euler(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
+    def aa2euler(
+        input_seq, eul_seq: str = DEFAULT_EULER_SEQ, eul_degrees: bool = False
+    ) -> np.ndarray:
         """
         Convert angle-axis representation into Euler angle, with selected Euler sequence
         Shapes: from (..., 3) to (..., 3)
 
         Default Euler sequence is zxy
+
+        Default Euler unit is radians
         """
         if not isinstance(input_seq, np.ndarray):
             input_seq = np.array(input_seq)
@@ -44,18 +52,22 @@ class RotConvert:
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3))
         rotation = Rotation.from_rotvec(input_seq)
-        euler_seq = rotation.as_euler(seq=eul_seq)
+        euler_seq = rotation.as_euler(seq=eul_seq, degrees=eul_degrees)
 
         # restore original shape
         return np.reshape(euler_seq, orig_shape)
 
     @staticmethod
-    def euler2aa(input_seq, eul_seq: str = DEFAULT_EULER_SEQ) -> np.ndarray:
+    def euler2aa(
+        input_seq, eul_seq: str = DEFAULT_EULER_SEQ, eul_degrees: bool = False
+    ) -> np.ndarray:
         """
         Convert Euler angle representation into angle-axis, with selected Euler sequence
         Shapes: from (..., 3) to (..., 3)
 
         Default Euler sequence is zxy
+        
+        Default Euler unit is radians
         """
         if not isinstance(input_seq, np.ndarray):
             input_seq = np.array(input_seq)
@@ -65,7 +77,7 @@ class RotConvert:
 
         # isolate single rotation vectors in order to convert them
         input_seq = np.reshape(input_seq, (-1, 3))
-        rotation = Rotation.from_euler(eul_seq, input_seq)
+        rotation = Rotation.from_euler(eul_seq, input_seq, eul_degrees)
         aa_seq = rotation.as_rotvec()
 
         # restore original shape
