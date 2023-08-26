@@ -13,7 +13,7 @@ from .motion.mocap_processor import (
     MocapData,
     MocapLoader,
     Amass2HumanConvert,
-    h36m_np_to_txt,
+    save_h36m_mocap_np2txt,
 )
 
 from .metrics.body_pose_metrics import (

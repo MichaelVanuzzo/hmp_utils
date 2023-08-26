@@ -5,6 +5,7 @@ from hmp_utils import RotConvert
 from hmp_utils import SmplConstants, H36MConstants, BodyConstants
 
 
+# TODO: check
 class IK:
     @staticmethod
     def xyz_to_aa(
