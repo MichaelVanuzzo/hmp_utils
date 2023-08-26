@@ -5,320 +5,240 @@ class BodyModelType(Enum):
     SMPL = auto()
     H36M = auto()
 
+
 class BodyConstants:
     """General body constants class"""
-    NUM_KEYPOINTS:int
-    KEYPOINTS:"list[int]"
-    PARENTS:"list[int]"
-    CHILDS:"list[int]"
-    END_EFFECTORS:"list[int]"
-    MAJOR_JOINTS:"list[int]"
-    JOINTS_TO_IGNORE:"list[int]"
-    JOINT_NAMES:"list[str]"
-    OFFSETS:list
-    OFFSETS_ARE_RELATIVE:bool
-    LEFT_MUL:bool
-    BODY_MODEL_TYPE:BodyModelType
+
+    NUM_KEYPOINTS: int
+    KEYPOINTS: "list[int]"  # TODO: remove this, it's pointless
+    PARENTS: "dict[int, int]"
+    CHILDS: "dict[int, int]"  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
+    # JOINTS = "list[int]"
+    # END_EFFECTORS: "list[int]"
+    MAJOR_JOINTS: "list[int]"
+    JOINTS_TO_IGNORE: "list[int]"
+    JOINT_NAMES: "dict[int, str]"
+    OFFSETS: list
+    OFFSETS_ARE_RELATIVE: bool
+    LEFT_MUL: bool
+    BODY_MODEL_TYPE: BodyModelType
 
 
 class SmplConstants(BodyConstants):
     # ---------------SMPL---------------
     # Keypoints are all the joints and end effectors combined
     NUM_KEYPOINTS = 24
-    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]
+    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]  # TODO: remove this, it's pointless
+
     # Parents of all SMPL keypoints
-    PARENTS = [
-        -1,
-        0,
-        0,
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        9,
-        9,
-        12,
-        13,
-        14,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-    ]
+    # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L33
+    PARENTS = {
+        0: -1,
+        1: 0,
+        2: 0,
+        3: 0,
+        4: 1,
+        5: 2,
+        6: 3,
+        7: 4,
+        8: 5,
+        9: 6,
+        10: 7,
+        11: 8,
+        12: 9,
+        13: 9,
+        14: 9,
+        15: 12,
+        16: 13,
+        17: 14,
+        18: 16,
+        19: 17,
+        20: 18,
+        21: 19,
+        22: 20,
+        23: 21,
+    }
+
     # Used to find the child of a joint, -1 if there is no child and for the root
-    CHILDS=[-1,
-           4,5,6,7,8,
-           9,10,11,12,-1,
-           -1,15,16,17,-1,
-           18,19,20,21,22,
-           23,-1,-1]
+    CHILDS = {
+        0: -1,
+        1: 4,
+        2: 5,
+        3: 6,
+        4: 7,
+        5: 8,
+        6: 9,
+        7: 10,
+        8: 11,
+        9: 12,
+        10: -1,
+        11: -1,
+        12: 15,
+        13: 16,
+        14: 17,
+        15: -1,
+        16: 18,
+        17: 19,
+        18: 20,
+        19: 21,
+        20: 22,
+        21: 23,
+        22: -1,
+        23: -1,
+    }  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
+
     # Keypoints called joints are those which perform rotation relative to their parent
-    JOINTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
+    # JOINTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
     # Keypoints that are at the end of the kinematics tree
-    END_EFFECTORS = [10, 11, 15, 22, 23]
+    # END_EFFECTORS = [10, 11, 15, 22, 23]
+
     # Subset of keypoints used by DIP dataset and in metrics (https://github.com/eth-ait/dip18/blob/master/train_and_eval/utils.py)
-    MAJOR_JOINTS = [1, 2, 3, 4, 5, 6, 9, 12, 13, 14, 15, 16, 17, 18, 19]
+    MAJOR_JOINTS = [1, 2, 3, 4, 5, 6, 9, 12, 13, 14, 15, 16, 17, 18, 19]  # TODO: check
+
     JOINTS_TO_IGNORE = [7, 8, 10, 11, 20, 21, 22, 23, 24]  # TODO: check
 
-    # From https://github.com/vchoutas/smplx/blob/main/smplx/joint_names.py TODO: check
-    SMPLX_JOINT_NAMES = [
-        "pelvis",
-        "left_hip",
-        "right_hip",
-        "spine1",
-        "left_knee",
-        "right_knee",
-        "spine2",
-        "left_ankle",
-        "right_ankle",
-        "spine3",
-        "left_foot",
-        "right_foot",
-        "neck",
-        "left_collar",
-        "right_collar",
-        "head",
-        "left_shoulder",
-        "right_shoulder",
-        "left_elbow",
-        "right_elbow",
-        "left_wrist",
-        "right_wrist",
-        "jaw",
-        "left_eye_smplhf",
-        "right_eye_smplhf",
-        "left_index1",
-        "left_index2",
-        "left_index3",
-        "left_middle1",
-        "left_middle2",
-        "left_middle3",
-        "left_pinky1",
-        "left_pinky2",
-        "left_pinky3",
-        "left_ring1",
-        "left_ring2",
-        "left_ring3",
-        "left_thumb1",
-        "left_thumb2",
-        "left_thumb3",
-        "right_index1",
-        "right_index2",
-        "right_index3",
-        "right_middle1",
-        "right_middle2",
-        "right_middle3",
-        "right_pinky1",
-        "right_pinky2",
-        "right_pinky3",
-        "right_ring1",
-        "right_ring2",
-        "right_ring3",
-        "right_thumb1",
-        "right_thumb2",
-        "right_thumb3",
-        "nose",
-        "right_eye",
-        "left_eye",
-        "right_ear",
-        "left_ear",
-        "left_big_toe",
-        "left_small_toe",
-        "left_heel",
-        "right_big_toe",
-        "right_small_toe",
-        "right_heel",
-        "left_thumb",
-        "left_index",
-        "left_middle",
-        "left_ring",
-        "left_pinky",
-        "right_thumb",
-        "right_index",
-        "right_middle",
-        "right_ring",
-        "right_pinky",
-        "right_eye_brow1",
-        "right_eye_brow2",
-        "right_eye_brow3",
-        "right_eye_brow4",
-        "right_eye_brow5",
-        "left_eye_brow5",
-        "left_eye_brow4",
-        "left_eye_brow3",
-        "left_eye_brow2",
-        "left_eye_brow1",
-        "nose1",
-        "nose2",
-        "nose3",
-        "nose4",
-        "right_nose_2",
-        "right_nose_1",
-        "nose_middle",
-        "left_nose_1",
-        "left_nose_2",
-        "right_eye1",
-        "right_eye2",
-        "right_eye3",
-        "right_eye4",
-        "right_eye5",
-        "right_eye6",
-        "left_eye4",
-        "left_eye3",
-        "left_eye2",
-        "left_eye1",
-        "left_eye6",
-        "left_eye5",
-        "right_mouth_1",
-        "right_mouth_2",
-        "right_mouth_3",
-        "mouth_top",
-        "left_mouth_3",
-        "left_mouth_2",
-        "left_mouth_1",
-        "left_mouth_5",
-        "left_mouth_4",
-        "mouth_bottom",
-        "right_mouth_4",
-        "right_mouth_5",
-        "right_lip_1",
-        "right_lip_2",
-        "lip_top",
-        "left_lip_2",
-        "left_lip_1",
-        "left_lip_3",
-        "lip_bottom",
-        "right_lip_3",
-        # Face contour
-        "right_contour_1",
-        "right_contour_2",
-        "right_contour_3",
-        "right_contour_4",
-        "right_contour_5",
-        "right_contour_6",
-        "right_contour_7",
-        "right_contour_8",
-        "contour_middle",
-        "left_contour_8",
-        "left_contour_7",
-        "left_contour_6",
-        "left_contour_5",
-        "left_contour_4",
-        "left_contour_3",
-        "left_contour_2",
-        "left_contour_1",
-    ]
+    # From https://github.com/Meshcapade/wiki/blob/main/wiki/SMPL.md
+    SMPLX_JOINT_NAMES = {
+        0: "pelvis",
+        1: "left_hip",
+        2: "right_hip",
+        3: "spine1",
+        4: "left_knee",
+        5: "right_knee",
+        6: "spine2",
+        7: "left_ankle",
+        8: "right_ankle",
+        9: "spine3",
+        10: "left_foot",
+        11: "right_foot",
+        12: "neck",
+        13: "left_collar",
+        14: "right_collar",
+        15: "head",
+        16: "left_shoulder",
+        17: "right_shoulder",
+        18: "left_elbow",
+        19: "right_elbow",
+        20: "left_wrist",
+        21: "right_wrist",
+        22: "jaw",
+        23: "left_eye",
+        24: "right_eye",
+        25: "left_index1",
+        26: "left_index2",
+        27: "left_index3",
+        28: "left_middle1",
+        29: "left_middle2",
+        30: "left_middle3",
+        31: "left_pinky1",
+        32: "left_pinky2",
+        33: "left_pinky3",
+        34: "left_ring1",
+        35: "left_ring2",
+        36: "left_ring3",
+        37: "left_thumb1",
+        38: "left_thumb2",
+        39: "left_thumb3",
+        40: "right_index1",
+        41: "right_index2",
+        42: "right_index3",
+        43: "right_middle1",
+        44: "right_middle2",
+        45: "right_middle3",
+        46: "right_pinky1",
+        47: "right_pinky2",
+        48: "right_pinky3",
+        49: "right_ring1",
+        50: "right_ring2",
+        51: "right_ring3",
+        52: "right_thumb1",
+        53: "right_thumb2",
+        54: "right_thumb3",
+    }
 
-    SMPLH_JOINT_NAMES = [
-        "pelvis",
-        "left_hip",
-        "right_hip",
-        "spine1",
-        "left_knee",
-        "right_knee",
-        "spine2",
-        "left_ankle",
-        "right_ankle",
-        "spine3",
-        "left_foot",
-        "right_foot",
-        "neck",
-        "left_collar",
-        "right_collar",
-        "head",
-        "left_shoulder",
-        "right_shoulder",
-        "left_elbow",
-        "right_elbow",
-        "left_wrist",
-        "right_wrist",
-        "left_index1",
-        "left_index2",
-        "left_index3",
-        "left_middle1",
-        "left_middle2",
-        "left_middle3",
-        "left_pinky1",
-        "left_pinky2",
-        "left_pinky3",
-        "left_ring1",
-        "left_ring2",
-        "left_ring3",
-        "left_thumb1",
-        "left_thumb2",
-        "left_thumb3",
-        "right_index1",
-        "right_index2",
-        "right_index3",
-        "right_middle1",
-        "right_middle2",
-        "right_middle3",
-        "right_pinky1",
-        "right_pinky2",
-        "right_pinky3",
-        "right_ring1",
-        "right_ring2",
-        "right_ring3",
-        "right_thumb1",
-        "right_thumb2",
-        "right_thumb3",
-        "nose",
-        "right_eye",
-        "left_eye",
-        "right_ear",
-        "left_ear",
-        "left_big_toe",
-        "left_small_toe",
-        "left_heel",
-        "right_big_toe",
-        "right_small_toe",
-        "right_heel",
-        "left_thumb",
-        "left_index",
-        "left_middle",
-        "left_ring",
-        "left_pinky",
-        "right_thumb",
-        "right_index",
-        "right_middle",
-        "right_ring",
-        "right_pinky",
-    ]
+    # From https://github.com/Meshcapade/wiki/blob/main/wiki/SMPL.md
+    SMPLH_JOINT_NAMES = {
+        0: "pelvis",
+        1: "left_hip",
+        2: "right_hip",
+        3: "spine1",
+        4: "left_knee",
+        5: "right_knee",
+        6: "spine2",
+        7: "left_ankle",
+        8: "right_ankle",
+        9: "spine3",
+        10: "left_foot",
+        11: "right_foot",
+        12: "neck",
+        13: "left_collar",
+        14: "right_collar",
+        15: "head",
+        16: "left_shoulder",
+        17: "right_shoulder",
+        18: "left_elbow",
+        19: "right_elbow",
+        20: "left_wrist",
+        21: "right_wrist",
+        22: "left_index1",
+        23: "left_index2",
+        24: "left_index3",
+        25: "left_middle1",
+        26: "left_middle2",
+        27: "left_middle3",
+        28: "left_pinky1",
+        29: "left_pinky2",
+        30: "left_pinky3",
+        31: "left_ring1",
+        32: "left_ring2",
+        33: "left_ring3",
+        34: "left_thumb1",
+        35: "left_thumb2",
+        36: "left_thumb3",
+        37: "right_index1",
+        38: "right_index2",
+        39: "right_index3",
+        40: "right_middle1",
+        41: "right_middle2",
+        42: "right_middle3",
+        43: "right_pinky1",
+        44: "right_pinky2",
+        45: "right_pinky3",
+        46: "right_ring1",
+        47: "right_ring2",
+        48: "right_ring3",
+        49: "right_thumb1",
+        50: "right_thumb2",
+        51: "right_thumb3",
+    }
 
-    JOINT_NAMES = [
-        "pelvis",
-        "left_hip",
-        "right_hip",
-        "spine1",
-        "left_knee",
-        "right_knee",
-        "spine2",
-        "left_ankle",
-        "right_ankle",
-        "spine3",
-        "left_foot",
-        "right_foot",
-        "neck",
-        "left_collar",
-        "right_collar",
-        "head",
-        "left_shoulder",
-        "right_shoulder",
-        "left_elbow",
-        "right_elbow",
-        "left_wrist",
-        "right_wrist",
-        "left_hand",
-        "right_hand",
-    ]
+    # From https://github.com/Meshcapade/wiki/blob/main/wiki/SMPL.md
+    JOINT_NAMES = {
+        0: "pelvis",
+        1: "left_hip",
+        2: "right_hip",
+        3: "spine1",
+        4: "left_knee",
+        5: "right_knee",
+        6: "spine2",
+        7: "left_ankle",
+        8: "right_ankle",
+        9: "spine3",
+        10: "left_foot",
+        11: "right_foot",
+        12: "neck",
+        13: "left_collar",
+        14: "right_collar",
+        15: "head",
+        16: "left_shoulder",
+        17: "right_shoulder",
+        18: "left_elbow",
+        19: "right_elbow",
+        20: "left_wrist",
+        21: "right_wrist",
+        22: "left_hand",
+        23: "right_hand",
+    }
 
     # The offsets are vectors that map the position of body joints when the body is in the
     # T-pose standard SMPL pose, relative to the origin [0,0,0] #TODO: check
@@ -402,70 +322,103 @@ class SmplConstants(BodyConstants):
             [-7.35578759e-01, 2.05180646e-01, -5.39352281e-02],
         ],
     }
-    OFFSETS = OFFSETS_BY_GENDER['neutral']
+
+    OFFSETS = OFFSETS_BY_GENDER["neutral"]
+
     # OFFSETS_ARE_RELATIVE: indicates that offsets are global, so referred to the root joint
     OFFSETS_ARE_RELATIVE = False
+
     # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
     LEFT_MUL = False
+
     BODY_MODEL_TYPE = BodyModelType.SMPL
 
 
 class H36MConstants(BodyConstants):
     # --------------Human3.6M---------------
     # Keypoints are all the joints and end effectors combined
-    # Inspired by SLP https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L25
     NUM_KEYPOINTS = 32
-    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]
+    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]  # TODO: remove this, it's pointless
+
     # Parents of all Human3.6M keypoints
-    PARENTS = [
-        -1,
-        0,
-        1,
-        2,
-        3,
-        4,
-        0,
-        6,
-        7,
-        8,
-        9,
-        0,
-        11,
-        12,
-        13,
-        14,
-        12,
-        16,
-        17,
-        18,
-        19,
-        20,
-        19,
-        22,
-        12,
-        24,
-        25,
-        26,
-        27,
-        28,
-        27,
-        30,
-    ]
+    # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L28
+    PARENTS = {
+        0: -1,
+        1: 0,
+        2: 1,
+        3: 2,
+        4: 3,
+        5: 4,
+        6: 0,
+        7: 6,
+        8: 7,
+        9: 8,
+        10: 9,
+        11: 0,
+        12: 11,
+        13: 12,
+        14: 13,
+        15: 14,
+        16: 12,
+        17: 16,
+        18: 17,
+        19: 18,
+        20: 19,
+        21: 20,
+        22: 19,
+        23: 22,
+        24: 12,
+        25: 24,
+        26: 25,
+        27: 26,
+        28: 27,
+        29: 28,
+        30: 27,
+        31: 30,
+    }
 
     # Used to find the child of a joint, -1 if there is no child and for the root
-    CHILDS=[-1,
-            2,3,4,5,-1,
-            7,8,9,10,-1,
-            12,13,14,15,-1,
-            17,18,19,22,-1,
-            -1,-1,-1,25,26,
-            27,30,-1,-1,-1,
-            -1]
+    CHILDS = {
+        0: -1,
+        1: 2,
+        2: 3,
+        3: 4,
+        4: 5,
+        5: -1,
+        6: 7,
+        7: 8,
+        8: 9,
+        9: 10,
+        10: -1,
+        11: 12,
+        12: 13,
+        13: 14,
+        14: 15,
+        15: -1,
+        16: 17,
+        17: 18,
+        18: 19,
+        19: 22,
+        20: -1,
+        21: -1,
+        22: -1,
+        23: -1,
+        24: 25,
+        25: 26,
+        26: 27,
+        27: 30,
+        28: -1,
+        29: -1,
+        30: -1,
+        31: -1,
+    }  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
+
     # Keypoints called joints are those which perform rotation relative to their parent
-    # JOINTS = [] TODO
+    # JOINTS = []
     # Keypoints that are at the end of the kinematics tree
-    # END_EFFECTORS = []  TODO
-    # Subset of keypoints used in metrics #TODO: check
+    # END_EFFECTORS = []
+
+    # Subset of keypoints used in metrics
     MAJOR_JOINTS = [
         0,
         1,
@@ -489,43 +442,57 @@ class H36MConstants(BodyConstants):
         26,
         27,
     ]
-    JOINTS_TO_IGNORE = [5, 10, 15, 20, 21, 22, 23, 28, 29, 30, 31]
+
+    # Subset of static keypoints that are not used in metrics
+    JOINTS_TO_IGNORE = [
+        5,
+        10,
+        15,
+        20,
+        21,
+        22,
+        23,
+        28,
+        29,
+        30,
+        31,
+    ]
 
     # From https://github.com/wei-mao-2019/HisRepItself/blob/master/utils/h36motion3d.py#L42
-    JOINT_NAMES = [
-        "Hips",
-        "RightUpLeg",
-        "RightLeg",
-        "RightFoot",
-        "RightToeBase",
-        "Site",
-        "LeftUpLeg",
-        "LeftLeg",
-        "LeftFoot",
-        "LeftToeBase",
-        "Site",
-        "Spine",
-        "Spine1",
-        "Neck",
-        "Head",
-        "Site",
-        "LeftShoulder",
-        "LeftArm",
-        "LeftForeArm",
-        "LeftHand",
-        "LeftHandThumb",
-        "Site",
-        "L_Wrist_End",
-        "Site",
-        "RightShoulder",
-        "RightArm",
-        "RightForeArm",
-        "RightHand",
-        "RightHandThumb",
-        "Site",
-        "R_Wrist_End",
-        "Site",
-    ]
+    JOINT_NAMES = {
+        0: "Hips",
+        1: "RightUpLeg",
+        2: "RightLeg",
+        3: "RightFoot",
+        4: "RightToeBase",
+        5: "Site",
+        6: "LeftUpLeg",
+        7: "LeftLeg",
+        8: "LeftFoot",
+        9: "LeftToeBase",
+        10: "Site",
+        11: "Spine",
+        12: "Spine1",
+        13: "Neck",
+        14: "Head",
+        15: "Site",
+        16: "LeftShoulder",
+        17: "LeftArm",
+        18: "LeftForeArm",
+        19: "LeftHand",
+        20: "LeftHandThumb",
+        21: "Site",
+        22: "L_Wrist_End",
+        23: "Site",
+        24: "RightShoulder",
+        25: "RightArm",
+        26: "RightForeArm",
+        27: "RightHand",
+        28: "RightHandThumb",
+        29: "Site",
+        30: "R_Wrist_End",
+        31: "Site",
+    }
 
     # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L149
     OFFSETS = [
@@ -565,6 +532,8 @@ class H36MConstants(BodyConstants):
 
     # OFFSETS_ARE_RELATIVE: indicates that offsets are global, so referred to the root joint
     OFFSETS_ARE_RELATIVE = True
+
     # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication
     LEFT_MUL = True
+
     BODY_MODEL_TYPE = BodyModelType.H36M
