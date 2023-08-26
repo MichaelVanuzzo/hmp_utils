@@ -35,11 +35,11 @@ class MetricsProcessor:
 
         ---
         ### Args:
-        - predictions (list, ndarray): array of predicted joint relative angles in
+        - `predictions` (list, ndarray): array of predicted joint relative angles in
             the angle-axis representation with shape (batch_size, num_frames,
             num_keypoints, 3)
-        - targets (list, ndarray): same shape and representation of predictions
-        - joints_to_compute (list, ndarray)(optional): joints for which to return the joint angle differences (as single joints or
+        - `targets` (list, ndarray): same shape and representation of predictions
+        - `joints_to_compute` (list, ndarray)(optional): joints for which to return the joint angle differences (as single joints or
             averaged over the joints depending on the `single_joint_errors` parameter)
         """
         if not isinstance(predictions, np.ndarray):
@@ -227,9 +227,9 @@ class MetricsProcessor:
         - `f_kinematics_processor` (ForwardKinematics): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations.
-        - joint_to_normalize (int): chose a joint which length should be normalized to 1, which
+        - `joint_to_normalize` (int): chose a joint which length should be normalized to 1, which
             scale factor is used to scale all the other body links
-        - single_joint_errors (bool): whether to return the distances averaged over the keypoints
+        - `single_joint_errors` (bool): whether to return the distances averaged over the keypoints
         ---
         ### Return:
         The euclidean distances between predictions and targets. Return shape:
@@ -431,6 +431,7 @@ class SpectrumMetricsProcessor:
         framerate: float,
         remove_zero_freq: bool = True,
         normalize: bool = False,
+        joints_to_compute: Optional[Union[list, np.ndarray]] = None,
     ) -> np.ndarray:
         """
         Compute the power spectral density of the given sequence of joint angles.
@@ -442,6 +443,7 @@ class SpectrumMetricsProcessor:
         - `framerate` (float): the framerate of the sequence
         - `remove_zero_freq` (bool): whether to remove the zero frequency component or not
         - `normalize` (bool): whether to normalize the power spectral density
+        - `joints_to_compute` (list, ndarray)(optional): joints for which to compute the power spectral density
         ---
         ### Returns:
         The power spectral density of the given sequence of joint angles with shape
@@ -450,9 +452,18 @@ class SpectrumMetricsProcessor:
         if not isinstance(seq_t, np.ndarray):
             seq_t = np.array(seq_t)
 
+        if joints_to_compute is None:
+            joints_to_compute = [i for i in np.arange(seq_t.shape[-2])]
+
         feature_size = seq_t.shape[-1]
         n_joints = seq_t.shape[-2]
         seq_len = seq_t.shape[-3]
+
+        # keep only the joints to compute
+        seq_t = np.reshape(seq_t, [-1, seq_len, n_joints, feature_size])[
+            :, :, joints_to_compute, :
+        ]
+        n_joints = seq_t.shape[-2]
 
         seq_t = np.reshape(
             seq_t, [-1, seq_len, n_joints * feature_size]
