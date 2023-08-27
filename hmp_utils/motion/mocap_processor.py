@@ -152,7 +152,7 @@ class MocapLoader:
         self,
         body_model_type: BodyModelType,
         keypoint_ids_to_load: Union[list, np.ndarray],
-        target_framerate: float = None,
+        target_framerate: Optional[float] = None,
         downsampling_method: DownsampleMethod = DownsampleMethod.SLERP,
         downsampling_tolerance=1e-3,
     ) -> None:
@@ -166,7 +166,7 @@ class MocapLoader:
         ### Args:
         - `body_model_type` (BodyModelType): body model type to use for loading the mocap data
         - `keypoint_ids_to_load` (list, ndarray): list of indices of the keypoints to load
-        - `target_framerate` (float): target framerate of the loaded mocap data
+        - `target_framerate` (float)(optional): target framerate of the loaded mocap data
         - `downsampling_method` (DownsampleMethod): downsampling method to use
         - `downsampling_tolerance` (float): tolerance for downsampling
         """

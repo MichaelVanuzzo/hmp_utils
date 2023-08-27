@@ -3,6 +3,7 @@ import math
 import os
 import json
 
+from typing import Optional
 from tqdm import tqdm
 
 from .. import MocapLoader, BodyModelType
@@ -225,7 +226,7 @@ def get_few_mocaps_subject_list(dataset: list) -> list:
 
 def split_amass_dataset(
     amass_directory: str,
-    sets_by_dataset_dict_file_name: str = None,
+    sets_by_dataset_dict_file_name: Optional[str] = None,
     use_relative_path: bool = True,
     test_set_percentage: float = TEST_SET_PERCENTAGE,
     valid_set_percentage: float = VALID_SET_PERCENTAGE,
@@ -239,7 +240,7 @@ def split_amass_dataset(
     ---
     ### Args:
     - `amass_directory` (str): absolute path to the AMASS dataset root directory.
-    - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
+    - `sets_by_dataset_dict_file_name` (str)(optional): absolute path and name (without .json) of
         the file containing the dictionary. If None, the dictionary is not saved to a file.
         Example: '/path/to/folder/sets_by_dataset_dict'.
     - `use_relative_path` (bool): if True, the mocap paths in the dictionary are relative (default: True).
@@ -367,7 +368,7 @@ def split_amass_dataset(
 
 
 def load_sets_by_dataset_dict(
-    sets_by_dataset_dict_file_name: str, amass_directory: str = None
+    sets_by_dataset_dict_file_name: str, amass_directory: Optional[str] = None
 ) -> dict:
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
@@ -378,7 +379,7 @@ def load_sets_by_dataset_dict(
     - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
         the file containing the dictionary.
         Example: '/path/to/folder/sets_by_dataset_dict'.
-    - `amass_directory` (str): absolute path to the AMASS dataset root directory if the
+    - `amass_directory` (str)(optional): absolute path to the AMASS dataset root directory if the
         mocap paths in the dictionary are relative.
     ---
     ### Returns:

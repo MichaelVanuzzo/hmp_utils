@@ -18,8 +18,8 @@ class ForwardKinematics:
         self,
         offsets: Union[np.ndarray, list],
         parents: Union[np.ndarray, list],
-        offsets_are_relative: bool = None,
-        left_mul: bool = None,
+        offsets_are_relative: Optional[bool] = None,
+        left_mul: Optional[bool] = None,
     ) -> None:
         """
         Initialize the forward kinematics object with the body offsets and parents list.
@@ -28,12 +28,12 @@ class ForwardKinematics:
         ### Args:
         - `offsets` (list, ndarray): keypoint offsets, the first element is the root joint offset.
         - `parents` (list, ndarray): keypoint parents, the first element is the root joint parent.
-        - `offsets_are_relative` (bool): whether the given keypoints position offsets are absolute
+        - `offsets_are_relative` (bool)(optional): whether the given keypoints position offsets are absolute
             (an array of absolute positions of the body keypoints like AMASS), or relative like
             Human3.6M where the list contains vectors that displace the position of the keypoint
             in relation to the position of the parent keypoint. Automatically set with the
             set_body_model_type() function.
-        - `left_mul` (bool): whether to concatenate rotations like R3*R2*R1 (AMASS way) or vice versa
+        - `left_mul` (bool)(optional): whether to concatenate rotations like R3*R2*R1 (AMASS way) or vice versa
             (Human3.6M way). Automatically set with the set_body_model_type() function.
         """
         if not isinstance(offsets, np.ndarray):

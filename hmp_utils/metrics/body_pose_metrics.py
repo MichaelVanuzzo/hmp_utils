@@ -141,7 +141,7 @@ class MetricsProcessor:
         self,
         use_global_rotations: bool = False,
         single_joint_errors: bool = False,
-        f_kinematics_processor: ForwardKinematics = None,
+        f_kinematics_processor: Optional[ForwardKinematics] = None,
     ) -> np.ndarray:
         """
         Compute the angle needed to align each joint in the predictions to the targets.
@@ -154,7 +154,7 @@ class MetricsProcessor:
         ### Args:
         - `use_global_rotations` (bool): compute global rotations given the fk processor object
         - `single_joint_errors` (bool): return shape is (..., n_joints)
-        - `f_kinematics_processor` (ForwardKinematics): the kinematics object used to
+        - `f_kinematics_processor` (ForwardKinematics)(optional): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations. This is done to compute the global rotations
         ---
@@ -212,7 +212,7 @@ class MetricsProcessor:
     def positional_error(
         self,
         f_kinematics_processor: ForwardKinematics,
-        joint_to_normalize: int = None,
+        joint_to_normalize: Optional[int] = None,
         single_joint_errors: bool = False,
     ) -> np.ndarray:
         """
@@ -227,7 +227,7 @@ class MetricsProcessor:
         - `f_kinematics_processor` (ForwardKinematics): the kinematics object used to
             compute the forward kinematics on the given predictions/targets which always
             represent relative rotations.
-        - `joint_to_normalize` (int): chose a joint which length should be normalized to 1, which
+        - `joint_to_normalize` (int)(optional): chose a joint which length should be normalized to 1, which
             scale factor is used to scale all the other body links
         - `single_joint_errors` (bool): whether to return the distances averaged over the keypoints
         ---
@@ -326,7 +326,7 @@ class MetricsPostProcessor:
         return errors
 
     def cumulative(
-        self, start_frame: int = 0, end_frame: int = None, normalize=False
+        self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
     ) -> float:
         """
         Compute cumulative error from the start of the sequence.
@@ -339,7 +339,7 @@ class MetricsPostProcessor:
         ---
         ### Args:
         - `start_frame` (int): the frame at which to start the cumulation (including the specified frame).
-        - `end_frame` (int): the frame at which to sum up to (including the specified frame).
+        - `end_frame` (int)(optional): the frame at which to sum up to (including the specified frame).
         - `normalize` (bool): whether to normalize the cumulative error by the number of frames.
         ---
         ### Returns:
@@ -372,7 +372,9 @@ class MetricsPostProcessor:
         self.__is_valid_frame(at_frame)
         return self.errors[at_frame]
 
-    def windowed_mean(self, at_frame: int, window_len_frames: int = None) -> float:
+    def windowed_mean(
+        self, at_frame: int, window_len_frames: Optional[int] = None
+    ) -> float:
         """
         Compute the mean error in a window with the specified number of frames prior to
         the specified frame (included in the window).
@@ -382,7 +384,7 @@ class MetricsPostProcessor:
         ---
         ### Args:
         - `at_frame` (int): the frame at which the averaging window ends
-        - `window_len_frames` (int): the length of the averaging window in frames. If not specified,
+        - `window_len_frames` (int)(optional): the length of the averaging window in frames. If not specified,
             the average over all the previous frames is returned.
         ---
         ### Returns:
@@ -504,7 +506,9 @@ class SpectrumMetricsProcessor:
 
     @staticmethod
     def ps_entropy(
-        seq: Union[list, np.ndarray], framerate: float = None, get_mean: bool = True
+        seq: Union[list, np.ndarray],
+        framerate: Optional[float] = None,
+        get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
         """
         Compute the entropy of the power spectral density.
@@ -514,7 +518,7 @@ class SpectrumMetricsProcessor:
         - `seq` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
             (..., ps_len, n_joints, 3)
-        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the entropies or all the entropies
         ---
         ### Returns:
@@ -540,7 +544,7 @@ class SpectrumMetricsProcessor:
     def kl_divergence(
         seq_from: Union[list, np.ndarray],
         seq_to: np.ndarray,
-        framerate: float = None,
+        framerate: Optional[float] = None,
         get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
         """
@@ -554,7 +558,7 @@ class SpectrumMetricsProcessor:
         - `seq_to` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
             (..., ps_len, n_joints, 3)
-        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the kl divergences or all the divergences
         ---
         ### Returns:
@@ -589,7 +593,7 @@ class SpectrumMetricsProcessor:
     def js_divergence(
         seq_g: Union[list, np.ndarray],
         seq_h: Union[list, np.ndarray],
-        framerate: float = None,
+        framerate: Optional[float] = None,
         get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
         """
@@ -603,7 +607,7 @@ class SpectrumMetricsProcessor:
         - `seq_h` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
             (..., ps_len, n_joints, 3)
-        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the js divergences or all the divergences
         ---
         ### Returns:
@@ -640,7 +644,7 @@ class SpectrumMetricsProcessor:
     def wasserstein_distance(
         seq_u: Union[list, np.ndarray],
         seq_v: Union[list, np.ndarray],
-        framerate: float = None,
+        framerate: Optional[float] = None,
         time_window_len: float = 1,
         get_mean: bool = True,
     ) -> Union[float, np.ndarray]:
@@ -655,7 +659,7 @@ class SpectrumMetricsProcessor:
         - `seq_v` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
             (..., ps_len, n_joints, 3)
-        - `framerate` (float): the framerate of the sequence (only if the sequences are in time domain)
+        - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `time_window_len` (float): the length of the time window in seconds
         - `get_mean` (bool): whether to return the mean of the wasserstein distances or all the
             distances
