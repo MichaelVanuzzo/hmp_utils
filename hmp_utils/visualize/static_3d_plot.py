@@ -73,9 +73,7 @@ def plot_body_keypoints(
     # keypoint_pos_lst is a list of poses
     if body_rotation != (0, 0, 0):
         body_rotation = np.array(body_rotation) * np.pi / 180
-        view_rotmat = RotConvert.aa2rotmat(
-            RotConvert.euler2aa(body_rotation, eul_seq=("xyz"))
-        )
+        view_rotmat = RotConvert.euler2rotmat(body_rotation, eul_seq=("xyz"))
         for idx, body in enumerate(keypoint_pos_lst):
             keypoint_pos_lst[idx] = np.apply_along_axis(
                 lambda x: np.matmul(view_rotmat, x), axis=-1, arr=body
@@ -84,7 +82,6 @@ def plot_body_keypoints(
     plot_ranges_lst = []
 
     for pose_id, pose in enumerate(keypoint_pos_lst):
-
         color_id = pose_id % len(color_list)
         link_color, keypoint_color = color_list[color_id]
 
@@ -137,8 +134,11 @@ def plot_body_keypoints(
 
         plot_ranges_lst.append([(np.min(pose), np.max(pose))])
 
-    plot_ranges_lst = np.array(plot_ranges_lst) * image_margins_factor
+    plot_ranges_lst = np.array(plot_ranges_lst)
     range_min, range_max = (np.min(plot_ranges_lst), np.max(plot_ranges_lst))
+    image_margin = (range_max - range_min) * (1 - image_margins_factor) / 2
+    range_min -= image_margin
+    range_max += image_margin
 
     ax.axes.set_xlim3d(left=range_min, right=range_max)
     ax.axes.set_ylim3d(bottom=range_min, top=range_max)
@@ -178,10 +178,10 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
 
     # Create the sliders and display them
     elevation_slider = widgets.FloatSlider(
-        min=-360, max=360, value=20, description="Elevation"
+        min=0, max=360, value=20, description="Elevation"
     )
     azimuth_slider = widgets.FloatSlider(
-        min=-360, max=360, value=100, description="Azimuth"
+        min=0, max=360, value=100, description="Azimuth"
     )
     view_axis_slider = widgets.IntSlider(
         min=0, max=1, value=1, description="Axis grids"

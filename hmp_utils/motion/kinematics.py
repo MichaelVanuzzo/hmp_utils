@@ -38,8 +38,13 @@ class ForwardKinematics:
         """
         if not isinstance(offsets, np.ndarray):
             self.body_link_offsets = np.array(offsets)
+        else:
+            self.body_link_offsets = offsets
+
         if not isinstance(parents, np.ndarray):
             self.parents = np.array(parents)
+        else:
+            self.parents = parents
 
         if len(self.body_link_offsets) != len(self.parents):
             raise Exception(
