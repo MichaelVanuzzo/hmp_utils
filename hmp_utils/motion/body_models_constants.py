@@ -11,13 +11,13 @@ class BodyConstants:
 
     NUM_KEYPOINTS: int
     KEYPOINTS: "list[int]"  # TODO: remove this, it's pointless
-    PARENTS: "dict[int, int]"
-    CHILDS: "dict[int, int]"  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
+    PARENTS: "list[int, int]"
+    CHILDS: "list[int, int]"  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
     # JOINTS = "list[int]"
     # END_EFFECTORS: "list[int]"
     MAJOR_JOINTS: "list[int]"
     JOINTS_TO_IGNORE: "list[int]"
-    JOINT_NAMES: "dict[int, str]"
+    JOINT_NAMES: "list[int, str]"
     OFFSETS: list
     OFFSETS_ARE_RELATIVE: bool
     LEFT_MUL: bool
@@ -32,7 +32,7 @@ class SmplConstants(BodyConstants):
 
     # Parents of all SMPL keypoints
     # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L33
-    PARENTS = {
+    PARENTS_ = {
         0: -1,
         1: 0,
         2: 0,
@@ -58,9 +58,10 @@ class SmplConstants(BodyConstants):
         22: 20,
         23: 21,
     }
+    PARENTS = list(PARENTS_.values())
 
     # Used to find the child of a joint, -1 if there is no child and for the root
-    CHILDS = {
+    CHILDS_ = {
         0: -1,
         1: 4,
         2: 5,
@@ -86,6 +87,7 @@ class SmplConstants(BodyConstants):
         22: -1,
         23: -1,
     }  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
+    CHILDS = list(CHILDS_.values())
 
     # Keypoints called joints are those which perform rotation relative to their parent
     # JOINTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
@@ -213,7 +215,7 @@ class SmplConstants(BodyConstants):
     }
 
     # From https://github.com/Meshcapade/wiki/blob/main/wiki/SMPL.md
-    JOINT_NAMES = {
+    JOINT_NAMES_ = {
         0: "pelvis",
         1: "left_hip",
         2: "right_hip",
@@ -239,6 +241,7 @@ class SmplConstants(BodyConstants):
         22: "left_hand",
         23: "right_hand",
     }
+    JOINT_NAMES = list(JOINT_NAMES_.values())
 
     # The offsets are vectors that map the position of body joints when the body is in the
     # T-pose standard SMPL pose, relative to the origin [0,0,0] #TODO: check
@@ -342,7 +345,7 @@ class H36MConstants(BodyConstants):
 
     # Parents of all Human3.6M keypoints
     # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L28
-    PARENTS = {
+    PARENTS_ = {
         0: -1,
         1: 0,
         2: 1,
@@ -376,9 +379,10 @@ class H36MConstants(BodyConstants):
         30: 27,
         31: 30,
     }
+    PARENTS = list(PARENTS_.values())
 
     # Used to find the child of a joint, -1 if there is no child and for the root
-    CHILDS = {
+    CHILDS_ = {
         0: -1,
         1: 2,
         2: 3,
@@ -412,6 +416,7 @@ class H36MConstants(BodyConstants):
         30: -1,
         31: -1,
     }  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
+    CHILDS = list(CHILDS_.values())
 
     # Keypoints called joints are those which perform rotation relative to their parent
     # JOINTS = []
@@ -459,7 +464,7 @@ class H36MConstants(BodyConstants):
     ]
 
     # From https://github.com/wei-mao-2019/HisRepItself/blob/master/utils/h36motion3d.py#L42
-    JOINT_NAMES = {
+    JOINT_NAMES_ = {
         0: "Hips",
         1: "RightUpLeg",
         2: "RightLeg",
@@ -493,6 +498,7 @@ class H36MConstants(BodyConstants):
         30: "R_Wrist_End",
         31: "Site",
     }
+    JOINT_NAMES = list(JOINT_NAMES_.values())
 
     # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L149
     OFFSETS = [
