@@ -8,12 +8,8 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
 """
->> Future Developement Ideas <<
-¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
-- add automatic camera range detection, right now it overrides with a default value
-    for all motions, which might be a problem for different scale motions
+TODO:
 - add automatic colors when multiple bodies are visualized in the same subplot
-- replace the DUMMY_MAX_INT with a way to find the max int that can be represented
 - add to the pose_animation function the ability to have a parents list for each
     body pose motion, since right now it uses the same parents for all motions
 """
@@ -31,12 +27,8 @@ class CameraOrientation:
         self.elevation = elevation
 
 
-# NOTE: this needs to be replaced with something more elegant
-DUMMY_MAX_INT = 100000000
-
-
 def pose_animation(
-    motions_list: list,
+    mocap_list: list,
     parents: list,
     animation_framerate: float,
     animation_mode: AnimationMode = AnimationMode.PLOTLIB,
@@ -56,7 +48,7 @@ def pose_animation(
 
         ---
         ### Args:
-    - motions_list (list): list of body keypoints positions that evolve with time. It must be a list
+    - mocap_list (list): list of body keypoints positions that evolve with time. It must be a list
         so if a single body motion is needed just put it in a list like [body_positions]. Where
         body_position has a shape like (num_frames, num_keypoints, 3)
     - parents (list): list of parents for the body keypoints, needed to link the keypoints with lines
@@ -73,25 +65,21 @@ def pose_animation(
     - show_grid (bool): whether to show the plotlib grid or not
     - show_keypoint_id (bool): whether to show the keypoint number adjacent to keypoint position in 3d
     - fig_opts (dict, optional): figure options as argument for the plt.figure() method
-
-        ---
-        ### Returns:
-        Nothing.
     """
 
     # number of subplot to show
     if subplot_ids is None:
         # show all mocaps in the same plot
-        subplot_ids = [0 for _ in motions_list]
+        subplot_ids = [0 for _ in mocap_list]
     num_subplots = len(set(subplot_ids))
 
     if subplot_colors is None:
         # assign the same color to all the skeletons
-        subplot_colors = ["b" for _ in motions_list]
+        subplot_colors = ["b" for _ in mocap_list]
 
     # subplot titles
     if subplot_titles is None:
-        subplot_titles = [f"Motion {i}" for i in range(num_subplots)]
+        subplot_titles = [f"Mocap {i}" for i in range(num_subplots)]
 
     # figure plot arguments
     if fig_opts is None:
@@ -110,30 +98,18 @@ def pose_animation(
             f"camera orientations as there are subplots. Num subplots: {num_subplots}"
         )
 
-    # NOTE: keypoint ID visualization is not yet fully implemented. The text elements should be initialized like
-    # the body lines and their positions updated every frame for efficiency.
-    if show_keypoint_id:
-        logging.warning("Show keypoint ID is not yet working properly")
-
     # find minimum duration of motions, that is where to stop the animation
-    min_len_frames = DUMMY_MAX_INT
-    for mocap_pos in motions_list:
-        min_len_frames = min(min_len_frames, len(mocap_pos))
+    min_len_frames = min([len(mocap_pos) for mocap_pos in mocap_list])
 
-    # -- -- -- -- -- -- -- -- -- --
-    # NOTE: THIS NEEDS TO BE FIXED
     # automatically compute camera range
     # the camera range on the 3 axis must be the same in order to preserve proportions
-    camera_range = [DUMMY_MAX_INT, -DUMMY_MAX_INT]
-    for mocap_positions in motions_list:
-        camera_range = [
-            np.min((np.min(mocap_positions), camera_range[0])),
-            np.max((np.max(mocap_positions), camera_range[1])),
-        ]
-    camera_range = [int(i) for i in camera_range]
-    # ! OVERRIDE CAMERA RANGE
-    camera_range = [-1, 1]
-    # -- -- -- -- -- -- -- -- -- --
+    plot_ranges_lst = []
+    for mocap_positions in mocap_list:
+        plot_ranges_lst.append(np.min(mocap_positions))
+        plot_ranges_lst.append(np.max(mocap_positions))
+    camera_range = [np.min(plot_ranges_lst), np.max(plot_ranges_lst)]
+    image_margins = (camera_range[1] - camera_range[0]) / 10
+    camera_range = [camera_range[0] - image_margins, camera_range[1] + image_margins]
 
     # create figure
     fig, axes = plt.subplots(
@@ -145,7 +121,7 @@ def pose_animation(
     if not isinstance(axes, np.ndarray):
         # single subplot
         axes = [axes]
-    if isinstance(axes, np.ndarray):
+    else:
         axes = axes.tolist()
 
     # this is text to display other information during the animation
@@ -158,34 +134,43 @@ def pose_animation(
     # -- DEFINE LINES TO BE PLOTTED --
     # For efficiency, the lines are plotted one time and then updated during the animation
     # shape: (num_mocaps, num_keypoints)
+    plot_keypoint = []
     plot_lines = []
-    for mocap_id, mocap_positions in enumerate(motions_list):
+    for mocap_id, mocap_positions in enumerate(mocap_list):
         ax_id = subplot_ids[mocap_id]
         ax = axes[ax_id]
         # le linee sono inizializzate nel primo frame del mocap
         keypoint_positions = mocap_positions[0]
 
+        plot_keypoint.append([])
         plot_lines.append([])
         for i, keypoint_pos in enumerate(keypoint_positions):
-            # if parents[i] is None:
-            #     parent = None
-            #     parent_point = [0, 0, 0]
-            # else:
+            if show_keypoint_id:
+                plot_keypoint[mocap_id].append(
+                    ax.text(
+                        keypoint_pos[0],
+                        keypoint_pos[1],
+                        keypoint_pos[2],
+                        f"{i}",
+                        fontsize=10,
+                    )
+                )
 
             parent = parents[i]
             parent_point = keypoint_positions[parent]
-
             # if it has a parent (not itself and not -1), connect it with a line
-
             if parent != -1:
-                line = ax.plot(
+                (line,) = ax.plot(
                     [keypoint_pos[0], parent_point[0]],
                     [keypoint_pos[1], parent_point[1]],
                     [keypoint_pos[2], parent_point[2]],
                     "-o",
                     markersize=2.0,
                 )
-                plot_lines[mocap_id].append(line)
+                line.set_color(subplot_colors[mocap_id])
+            else:
+                line = None
+            plot_lines[mocap_id].append(line)
 
         # Set camera orientations for each subplot
         elev = camera_orientations[ax_id].elevation
@@ -199,38 +184,29 @@ def pose_animation(
         """
         function to update the figure for each frame of the animation
         """
-        for motion_id, motion_positions in enumerate(motions_list):
-            ax = axes[subplot_ids[motion_id]]
-            subplot_info_text_lst[subplot_ids[motion_id]].set_text(
-                f"frame: {frame+1}/{len(motion_positions)} | time: {(frame+1)/animation_framerate:.2f} s"
+        for mocap_id, mocap_positions in enumerate(mocap_list):
+            subplot_info_text_lst[subplot_ids[mocap_id]].set_text(
+                f"frame: {frame+1}/{len(mocap_positions)} | time: {(frame+1)/animation_framerate:.2f} s"
             )
-            keypoint_positions = motion_positions[frame]
+            keypoint_positions = mocap_positions[frame]
 
             # Plot the points
             for i, point in enumerate(keypoint_positions):
-                # keypoint label - BUG: not working properly
                 if show_keypoint_id:
-                    ax.text(*point, f"{i}", fontsize=10)
+                    plot_keypoint[mocap_id][i].set_position(
+                        (point[0], point[1], point[2])
+                    )
 
-                # if parents[i] is None:
-                #     parent = None
-                #     parent_point = [0, 0, 0]
-                # else:
                 parent = parents[i]
                 parent_point = keypoint_positions[parent]
-
                 # -- Update lines positions --
                 # if it has a parent (not itself and not -1), connect it with a line
                 if parent != -1:
-                    plot_lines[motion_id][i - 1][0].set_data(
-                        np.array(
-                            [[point[0], parent_point[0]], [point[1], parent_point[1]]]
-                        )
+                    line = plot_lines[mocap_id][i]
+                    line.set_data(
+                        [point[0], parent_point[0]], [point[1], parent_point[1]]
                     )
-                    plot_lines[motion_id][i - 1][0].set_3d_properties(
-                        np.array([point[2], parent_point[2]])
-                    )
-                    plot_lines[motion_id][i - 1][0].set_color(subplot_colors[motion_id])
+                    line.set_3d_properties([point[2], parent_point[2]])
 
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
@@ -255,7 +231,6 @@ def pose_animation(
         plt.show()
 
     if animation_mode == AnimationMode.HTML:
-        # html_ani = ani.to_html5_video()
         html_ani = ani.to_jshtml()
         display(HTML(html_ani))
         plt.close()
