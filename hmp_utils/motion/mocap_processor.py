@@ -617,7 +617,7 @@ class Amass2HumanConverter:
 
 
 def save_h36m_mocap_np2txt(
-    rots: np.ndarray,
+    mocap: np.ndarray,
     dir_path: str,
     filename: str,
     trans: Optional[np.ndarray] = None,
@@ -627,17 +627,17 @@ def save_h36m_mocap_np2txt(
 
     ---
     ### Args:
-    - `rots` (np.ndarray): rotations of joints in angle-axis representation with shape (num_frames, num_joints, 3)
+    - `mocap` (np.ndarray): translation(optional) + rotations of joints in angle-axis representation with shape (num_frames, num_joints, 3)
     - `dir_path` (str): path of the saved file
     - `filename` (str): name of the saved file (without ".txt")
     - `trans` (np.ndarray)(optional): translation of root joint (num_frames, 1, 3)
     """
 
-    original_shape = rots.shape
+    original_shape = mocap.shape
 
-    rots = np.reshape(rots, (-1, *original_shape[-2:]))  # (num_frame,joints,3)
-    num_frames = rots.shape[0]
-    num_joints = rots.shape[1]
+    mocap = np.reshape(mocap, (-1, *original_shape[-2:]))  # (num_frame,joints,3)
+    num_frames = mocap.shape[0]
+    num_joints = mocap.shape[1]
     assert num_joints in [32, 33]
 
     # add root position if it's missing in the mocap
@@ -646,7 +646,7 @@ def save_h36m_mocap_np2txt(
             trans = np.zeros([num_frames, 1, 3])
         else:
             trans = np.reshape(trans, (-1, 1, 3))
-        mocap = np.concatenate([trans, rots], axis=1)
+        mocap = np.concatenate([trans, mocap], axis=1)
 
     mocap_txt = np.reshape(mocap, [-1, 99])  # (num_frame,99)
 
