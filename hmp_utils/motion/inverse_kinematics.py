@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Union as U
 from typing import Optional as O
-from hmp_utils import RotConvert
+from hmp_utils import RotConverter
 from hmp_utils import SmplConstants, H36MConstants, BodyConstants
 
 
@@ -176,7 +176,7 @@ class IK:
             aa[:, joint] = axis * angle
 
             # save cumulative rotation up to the joint
-            rot_mat_temp = RotConvert.aa2rotmat(aa[:, joint])
+            rot_mat_temp = RotConverter.aa2rotmat(aa[:, joint])
             if left_mul:
                 rot_mat[:, joint] = np.matmul(rot_mat_temp, rot_mat[:, parent_joint])
             else:

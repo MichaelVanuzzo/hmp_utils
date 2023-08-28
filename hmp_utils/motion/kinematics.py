@@ -1,7 +1,7 @@
 import numpy as np
 from enum import Enum, auto
 from typing import Optional, Union
-from .. import RotConvert, BodyModelType
+from .. import RotConverter, BodyModelType
 
 
 class FkReturnType(Enum):
@@ -145,7 +145,7 @@ class ForwardKinematics:
             raise NotImplementedError
 
         # convert angle-axis notations to rotation matrices
-        joint_rotmat = RotConvert.aa2rotmat(joint_rots)
+        joint_rotmat = RotConverter.aa2rotmat(joint_rots)
         # forward kinematic is performed on the set of keypoints
         joint_rotmat = np.reshape(joint_rotmat, (-1, self.num_keypoints, 3, 3))
 

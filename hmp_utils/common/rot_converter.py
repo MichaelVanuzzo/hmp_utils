@@ -3,7 +3,7 @@ from scipy.spatial.transform import Rotation
 from typing import Union, Optional
 
 
-class RotConvert:
+class RotConverter:
     """
     Class for converting between different rotation representations
 

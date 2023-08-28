@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from typing import Union, Optional
 
-from .. import RotConvert
+from .. import RotConverter
 from .. import ForwardKinematics, FkReturnType
 
 """
@@ -68,7 +68,7 @@ class MetricsProcessor:
 
     def euler_error(
         self,
-        euler_seq: str = RotConvert.DEFAULT_EULER_SEQ,
+        euler_seq: str = RotConverter.DEFAULT_EULER_SEQ,
         errors_computed_per_joint: bool = False,
         joint_weights: Optional[Union[list, np.ndarray]] = None,
     ) -> np.ndarray:
@@ -97,8 +97,8 @@ class MetricsProcessor:
         n_joints = self.targets_aa.shape[-2]
 
         # convert into Euler representation
-        euler_preds = RotConvert.aa2euler(self.predictions_aa, euler_seq)
-        euler_targs = RotConvert.aa2euler(self.targets_aa, euler_seq)
+        euler_preds = RotConverter.aa2euler(self.predictions_aa, euler_seq)
+        euler_targs = RotConverter.aa2euler(self.targets_aa, euler_seq)
 
         # reshape to (-1, len(self.joints_to_compute), 3)
         euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[
@@ -181,8 +181,8 @@ class MetricsProcessor:
             )
         else:
             # use local rotations
-            predictions = RotConvert.aa2rotmat(self.predictions_aa)
-            targets = RotConvert.aa2rotmat(self.targets_aa)
+            predictions = RotConverter.aa2rotmat(self.predictions_aa)
+            targets = RotConverter.aa2rotmat(self.targets_aa)
 
         predictions_rotmat = np.reshape(predictions, (-1, 3, 3))
         targets_rotmat = np.reshape(targets, (-1, 3, 3))
@@ -196,7 +196,7 @@ class MetricsProcessor:
 
         # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
         # the predicted and target orientations
-        aa_diff = RotConvert.rotmat2aa(rot_diff)
+        aa_diff = RotConverter.rotmat2aa(rot_diff)
         angles = np.linalg.norm(aa_diff, axis=1)
 
         angles = np.reshape(angles, return_shape)[

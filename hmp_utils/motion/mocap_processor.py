@@ -7,7 +7,7 @@ from enum import Enum, auto
 from typing import Optional, Union
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation
-from hmp_utils import RotConvert
+from hmp_utils import RotConverter
 from .. import BodyModelType, SmplConstants, H36MConstants
 
 
@@ -419,7 +419,7 @@ class MocapLoader:
         )
 
 
-class Amass2HumanConvert:
+class Amass2HumanConverter:
     """
     Class to convert an amass mocap to the human3.6m format.
 
@@ -592,13 +592,13 @@ class Amass2HumanConvert:
             amass_trans = np.zeros((num_frames, 1, 3))
 
         human_rots = np.zeros((num_frames, num_joints, 3))
-        amass_rotmat = RotConvert.aa2rotmat(amass_rots)
+        amass_rotmat = RotConverter.aa2rotmat(amass_rots)
 
         for keypoint in range(1, num_joints):  # TODO: and keypoint 0???
             if keypoint in self.human_keypoint_to_skip:
                 pass
             else:
-                human_rots[:, keypoint] = -RotConvert.rotmat2aa(
+                human_rots[:, keypoint] = -RotConverter.rotmat2aa(
                     np.matmul(
                         amass_rotmat[:, self.human2amass_keypoints[keypoint]],
                         self.aligning_rotmats[keypoint],

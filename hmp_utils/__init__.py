@@ -1,4 +1,4 @@
-from .common.rot_convert import RotConvert
+from .common.rot_converter import RotConverter
 from .common.table import Table
 
 from .motion.body_models_constants import (
@@ -12,7 +12,7 @@ from .motion.inverse_kinematics import IK
 from .motion.mocap_processor import (
     MocapData,
     MocapLoader,
-    Amass2HumanConvert,
+    Amass2HumanConverter,
     save_h36m_mocap_np2txt,
 )
 

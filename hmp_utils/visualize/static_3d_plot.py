@@ -3,7 +3,7 @@ import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from typing import Optional
 from mpl_toolkits.mplot3d import Axes3D
-from .. import RotConvert
+from .. import RotConverter
 
 
 def plot_body_keypoints(
@@ -73,7 +73,7 @@ def plot_body_keypoints(
     # keypoint_pos_lst is a list of poses
     if body_rotation != (0, 0, 0):
         body_rotation = np.array(body_rotation) * np.pi / 180
-        view_rotmat = RotConvert.euler2rotmat(body_rotation, eul_seq=("xyz"))
+        view_rotmat = RotConverter.euler2rotmat(body_rotation, eul_seq=("xyz"))
         for idx, body in enumerate(keypoint_pos_lst):
             keypoint_pos_lst[idx] = np.apply_along_axis(
                 lambda x: np.matmul(view_rotmat, x), axis=-1, arr=body
