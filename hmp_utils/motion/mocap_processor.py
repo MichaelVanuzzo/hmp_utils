@@ -14,7 +14,7 @@ from .. import BodyModelType, SmplConstants, H36MConstants
 class DownsampleMethod(Enum):
     RESAMPLE = auto()
     DECIMATE = auto()
-    SLERP = auto()
+    SLERP = auto()  # not applicable to translation and don't have anti-aliasing
     NONE = auto()
 
 
@@ -51,7 +51,7 @@ def downsample_motion(
     source_array: Union[np.ndarray, list],
     source_framerate: float,
     target_framerate: float,
-    method: DownsampleMethod = DownsampleMethod.SLERP,
+    method: DownsampleMethod = DownsampleMethod.RESAMPLE,
 ) -> Union[np.ndarray, None]:
     """
     Downsamples the given array to a target framerate using the specified method
@@ -150,7 +150,7 @@ class MocapLoader:
         body_model_type: BodyModelType,
         keypoint_ids_to_load: Union[list, np.ndarray],
         target_framerate: Optional[float] = None,
-        downsampling_method: DownsampleMethod = DownsampleMethod.SLERP,
+        downsampling_method: DownsampleMethod = DownsampleMethod.RESAMPLE,
         downsampling_tolerance=1e-3,
     ) -> None:
         """
@@ -283,7 +283,7 @@ class MocapLoader:
             self.downsampling_method == DownsampleMethod.DECIMATE
             and not self.__can_decimate(original_framerate, target_framerate)
         ):
-            downsample_method = DownsampleMethod.SLERP
+            downsample_method = DownsampleMethod.RESAMPLE
         else:
             downsample_method = self.downsampling_method
 
@@ -392,7 +392,7 @@ class MocapLoader:
             self.downsampling_method == DownsampleMethod.DECIMATE
             and not self.__can_decimate(original_framerate, target_framerate)
         ):
-            downsample_method = DownsampleMethod.SLERP
+            downsample_method = DownsampleMethod.RESAMPLE
         else:
             downsample_method = self.downsampling_method
 
