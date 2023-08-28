@@ -110,16 +110,13 @@ def downsample_motion(
         original_len_frames = original_shape[0]
         # this is not the actual duration of the sequence, but the last frame sample time
         original_len_sec = original_len_frames / source_framerate
+        original_key_times = np.arange(original_len_frames) / source_framerate
 
-        original_key_times = np.arange(
-            start=0, stop=original_len_sec, step=1 / source_framerate
-        )
-        target_times = np.arange(
+        target_key_times = np.arange(
             start=0, stop=original_len_sec, step=1 / target_framerate
         )
-
         # remove the last frame if it exceeds the time of the last frame in the key times
-        target_times = target_times[target_times < original_key_times[-1]]
+        target_key_times = target_key_times[target_key_times < original_key_times[-1]]
 
         # the shape is (num_frames, ..., 3) but we need (..., num_frames, 3)
         source_array = np.swapaxes(source_array, 0, -2)
@@ -130,7 +127,7 @@ def downsample_motion(
         for i in range(source_array.shape[0]):
             sequence = source_array[i]
             slerp_worker = Slerp(original_key_times, Rotation.from_rotvec(sequence))
-            interpolated_sequence = slerp_worker(target_times)
+            interpolated_sequence = slerp_worker(target_key_times)
             interpolated_rotations.append(interpolated_sequence.as_rotvec())
 
         interpolated_rotations = np.array(interpolated_rotations)

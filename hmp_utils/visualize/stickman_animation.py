@@ -8,7 +8,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
 """
-TODO:
+#TODO:
 - add automatic colors when multiple bodies are visualized in the same subplot
 - add to the pose_animation function the ability to have a parents list for each
     body pose motion, since right now it uses the same parents for all motions

@@ -94,10 +94,32 @@ class SmplConstants(BodyConstants):
     # Keypoints that are at the end of the kinematics tree
     # END_EFFECTORS = [10, 11, 15, 22, 23]
 
-    # Subset of keypoints used by DIP dataset and in metrics (https://github.com/eth-ait/dip18/blob/master/train_and_eval/utils.py)
-    MAJOR_JOINTS = [1, 2, 3, 4, 5, 6, 9, 12, 13, 14, 15, 16, 17, 18, 19]  # TODO: check
+    # Subset of keypoints used in metrics
+    MAJOR_JOINTS = [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+    ]
 
-    JOINTS_TO_IGNORE = [7, 8, 10, 11, 20, 21, 22, 23, 24]  # TODO: check
+    # Subset of keypoints that are not used in metrics
+    JOINTS_TO_IGNORE = [10, 11, 22, 23]
 
     # From https://github.com/Meshcapade/wiki/blob/main/wiki/SMPL.md
     SMPLX_JOINT_NAMES = {
