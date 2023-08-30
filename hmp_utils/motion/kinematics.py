@@ -113,7 +113,7 @@ class ForwardKinematics:
 
         ---
         ### Args:
-        - `joint_rots` (ndarray): relative joint rotations in angle-axis representation with shape (batch, num_joints, 3).
+        - `joint_rots` (ndarray): relative joint rotations in angle-axis representation with shape (..., num_joints, 3).
             The number of joints must be equal to the total number of keypoints which position needs to be computed.
         - `apply_root_rotation` (bool): if set to True, the root joint will rotate with respect to world
         - `root_translation` (np.ndarray)(optional): if root_translation is used, the keypoint positions are translated by
