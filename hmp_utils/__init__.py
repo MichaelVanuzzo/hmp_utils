@@ -43,6 +43,4 @@ from .visualize.stickman_animation import (
     pose_animation,
 )
 
-from .visualize.render_3d_smpl import render_3d_smpl
-
 from .common.custom_logger import custom_logger
