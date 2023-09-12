@@ -434,6 +434,7 @@ class SpectrumMetricsProcessor:
         remove_zero_freq: bool = True,
         normalize: bool = False,
         joints_to_compute: Optional[Union[list, np.ndarray]] = None,
+        get_zero_freq_percent: bool = False,
     ) -> np.ndarray:
         """
         Compute the power spectral density of the given sequence of joint angles.
@@ -475,21 +476,31 @@ class SpectrumMetricsProcessor:
         # calculate power spectrum
         seq_fft = np.fft.fft(seq_t, axis=1)  # (batch, seq_len, n_joints*3)
 
-        # remove the zero frequency component or divide by 2 due to the symmetry of the fft
-        if remove_zero_freq:
-            seq_fft[:, 0, :] = 0
-        else:
-            seq_fft[:, 0, :] /= 2
+        # divide by 2 the zero frequency component due to the symmetry of the fft
+        seq_fft[:, 0, :] /= 2
 
         # remove the second half of the sequence (due to the symmetry of the fft)
-        seq_fft = seq_fft[:, 0 : seq_len // 2, :]
-
-        seq_ps = np.abs(seq_fft) ** 2  # (batch, seq_len, n_joints*3)
+        seq_fft = seq_fft[:, 0 : seq_len // 2, :]  # (batch, ps_len, n_joints*3)
+        seq_ps = np.abs(seq_fft) ** 2  # (batch, ps_len, n_joints*3)
 
         # scale to obtain the power spectral density
         seq_ps = seq_ps * 2 / (framerate * seq_len)  # (batch, ps_len, n_joints*3)
 
         seq_ps_global = seq_ps.sum(axis=0)  # (ps_len, n_joints*3)
+        seq_ps_global = np.where(
+            seq_ps_global <= 1e-15, 0, seq_ps_global
+        )  # (ps_len, n_joints*3)
+
+        if get_zero_freq_percent:
+            tot_values = seq_ps_global.sum(axis=0)  # (1, n_joints*3)
+            tot_values = np.where(tot_values == 0, 1, tot_values)  # avoid division by 0
+            zero_freq_percentages = (
+                seq_ps_global[0] / tot_values * 100
+            )  # (1, n_joints*3)
+            zero_freq_percent = np.mean(zero_freq_percentages)  # float
+
+        if remove_zero_freq:
+            seq_ps_global[0, :] = 0  # (ps_len, n_joints*3)
 
         if normalize:
             norm_values = seq_ps_global.sum(axis=0, keepdims=True)  # (1, n_joints*3)
@@ -500,9 +511,42 @@ class SpectrumMetricsProcessor:
         else:
             seq_ps_global /= batch_size  # (ps_len, n_joints*3)
 
-        return np.reshape(
-            seq_ps_global, (-1, n_joints, feature_size)
-        )  # (ps_len, n_joints, 3)
+        if get_zero_freq_percent:
+            return (
+                np.reshape(seq_ps_global, (-1, n_joints, feature_size)),
+                zero_freq_percent,
+            )  # (ps_len, n_joints, 3), zero_freq_percent
+        else:
+            return np.reshape(
+                seq_ps_global, (-1, n_joints, feature_size)
+            )  # (ps_len, n_joints, 3)
+
+    @staticmethod
+    def remove_static_joints(seq_ps: np.ndarray) -> (np.ndarray, list):
+        """
+        Remove the joints that are static (zero power spectral density).
+
+        It's returned a tuple (`seq_ps`, `removed_joints`) where 'seq_ps' is the sequence of
+        power spectral density with the static joints removed and 'removed_joints' is the list
+        of the removed joints indexes.
+
+        ---
+        ### Args:
+        - `seq_ps` (ndarray): sequence of power spectral density with shape (ps_len, n_joints, 3)
+        ---
+        ### Returns:
+        The sequence of joint angles with the static joints removed and the list of the removed
+        joints indexes.
+        """
+
+        joints_to_remove = []
+        num_joints = seq_ps.shape[-2]
+        for joint_idx in range(num_joints):
+            if np.sum(seq_ps[:, joint_idx, :]) == 0:
+                joints_to_remove.append(joint_idx)
+        seq_ps = np.delete(seq_ps, joints_to_remove, axis=1)
+
+        return seq_ps, joints_to_remove
 
     @staticmethod
     def ps_entropy(
@@ -517,7 +561,7 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the entropies or all the entropies
         ---
@@ -554,10 +598,10 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq_from` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `seq_to` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the kl divergences or all the divergences
         ---
@@ -603,10 +647,10 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq_g` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `seq_h` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the js divergences or all the divergences
         ---
@@ -655,10 +699,10 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq_u` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `seq_v` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `time_window_len` (float): the length of the time window in seconds
         - `get_mean` (bool): whether to return the mean of the wasserstein distances or all the
