@@ -23,6 +23,11 @@ from .metrics.body_pose_metrics import (
 )
 from .metrics.evaluation_utils import (
     AMASS_SEQ_LEN,
+    SPECTRUM_EVALUATION_SEQ_LEN,
+    EVALUATION_TIMESTAMPS_25FPS,
+    EVALUATION_WINDOW_LEN_25FPS,
+    EVALUATION_TIMESTAMPS_60FPS,
+    EVALUATION_WINDOW_LEN_60FPS,
     SrnnEvaluationFrames,
     AmassEvaluationFrames,
 )
