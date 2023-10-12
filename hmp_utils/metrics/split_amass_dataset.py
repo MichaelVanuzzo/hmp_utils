@@ -9,6 +9,7 @@ from tqdm import tqdm
 from .. import MocapLoader, BodyModelType
 
 SEED = 130297
+TRAIN_SET_PERCENTAGE = 90
 TEST_SET_PERCENTAGE = 5
 VALID_SET_PERCENTAGE = 5
 TARGET_FRAMERATE = 60
@@ -40,6 +41,7 @@ AMASS_DATASETS = sorted(AMASS_DATASETS_BY_SUBJECT + AMASS_DATASETS_BY_ACTION)
 
 def get_sets_indexes_dict(
     samples_num: int,
+    train_set_percentage: float = TRAIN_SET_PERCENTAGE,
     test_set_percentage: float = TEST_SET_PERCENTAGE,
     valid_set_percentage: float = VALID_SET_PERCENTAGE,
 ) -> dict:
@@ -50,6 +52,7 @@ def get_sets_indexes_dict(
     ---
     ### Args:
     - `samples_num` (int): number of samples.
+    - `train_set_percentage` (float): percentage of samples to be used for the train set.
     - `test_set_percentage` (float): percentage of samples to be used for the test set.
     - `valid_set_percentage` (float): percentage of samples to be used for the validation set.
     ---
@@ -60,7 +63,10 @@ def get_sets_indexes_dict(
     # Calculate the number of samples for each set
     num_test_samples = math.ceil(samples_num * (test_set_percentage / 100))
     num_valid_samples = math.ceil(samples_num * (valid_set_percentage / 100))
-    num_train_samples = samples_num - num_test_samples - num_valid_samples
+    if train_set_percentage + test_set_percentage + valid_set_percentage < 100:
+        num_train_samples = math.ceil(samples_num * (train_set_percentage / 100))
+    else:
+        num_train_samples = samples_num - num_test_samples - num_valid_samples
 
     # Create a list of all sample indices
     all_samples = np.arange(samples_num)
@@ -228,6 +234,7 @@ def split_amass_dataset(
     amass_directory: str,
     sets_by_dataset_dict_file_name: Optional[str] = None,
     use_relative_path: bool = True,
+    train_set_percentage: float = TRAIN_SET_PERCENTAGE,
     test_set_percentage: float = TEST_SET_PERCENTAGE,
     valid_set_percentage: float = VALID_SET_PERCENTAGE,
 ) -> dict:
@@ -244,6 +251,7 @@ def split_amass_dataset(
         the file containing the dictionary. If None, the dictionary is not saved to a file.
         Example: '/path/to/folder/sets_by_dataset_dict'.
     - `use_relative_path` (bool): if True, the mocap paths in the dictionary are relative (default: True).
+    - `train_set_percentage` (float): percentage of samples to be used for the train set (default: 90).
     - `test_set_percentage` (float): percentage of samples to be used for the test set (default: 5).
     - `valid_set_percentage` (float): percentage of samples to be used for the validation set (default: 5).
     ---
@@ -301,6 +309,7 @@ def split_amass_dataset(
 
         sets_indexes_dict = get_sets_indexes_dict(
             len(dataset),
+            train_set_percentage=train_set_percentage,
             test_set_percentage=test_set_percentage,
             valid_set_percentage=valid_set_percentage,
         )
@@ -334,6 +343,7 @@ def split_amass_dataset(
             else:
                 sets_indexes_dict = get_sets_indexes_dict(
                     len(mocap_list),
+                    train_set_percentage=train_set_percentage,
                     test_set_percentage=test_set_percentage,
                     valid_set_percentage=valid_set_percentage,
                 )
