@@ -81,7 +81,12 @@ def get_sets_indexes_dict(
     test_set_indexes = all_samples[
         num_train_samples : num_train_samples + num_test_samples
     ]
-    valid_set_indexes = all_samples[num_train_samples + num_test_samples :]
+    valid_set_indexes = all_samples[
+        num_train_samples
+        + num_test_samples : num_train_samples
+        + num_test_samples
+        + num_valid_samples
+    ]
 
     return {
         "train": train_set_indexes,
