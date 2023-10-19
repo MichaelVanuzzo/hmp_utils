@@ -34,10 +34,10 @@ from .metrics.evaluation_utils import (
 from .metrics.split_amass_dataset import (
     AMASS_DATASETS,
     split_amass_dataset,
+    split_amass_by_clustering,
     load_sets_by_dataset_dict,
     print_amass_sets_info,
 )
-
 from .visualize.static_3d_plot import (
     plot_body_keypoints,
     interactive_plot_body_keypoints,
