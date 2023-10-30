@@ -1,7 +1,5 @@
 import logging
 
-# TODO: check
-
 
 def log_line(color_name, effect_name=None):
     Colors = {
