@@ -283,7 +283,7 @@ class AmassEvaluationFrames:
 
 class EvaluationProtocol:
     @staticmethod
-    def initialize_metrics_dicts(fk_processor: ForwardKinematics) -> tuple(dict, dict):
+    def initialize_metrics_dicts(fk_processor: ForwardKinematics) -> tuple([dict, dict]):
         """
         Initialize the metrics dictionaries.
 
@@ -340,7 +340,7 @@ class EvaluationProtocol:
     @staticmethod
     def load_power_spectral_density_dict(
         power_spectral_density_files: "list[str]",
-    ) -> tuple(dict, dict):
+    ) -> tuple([dict, dict]):
         """
         Load the power spectral density dictionaries.
 
