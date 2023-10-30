@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Union
 
-# TODO: check
+import warnings
 
 
 class Table:
@@ -27,6 +27,7 @@ class Table:
         - header (list): list of the columns names.
         - index (list): list of the row names.
         """
+        warnings.warn("Table class is deprecated", DeprecationWarning)
         # expand dims if the data is 1-dimensional
         if data.ndim == 1:
             self.data = np.expand_dims(data, axis=0)
