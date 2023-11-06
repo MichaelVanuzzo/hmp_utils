@@ -105,9 +105,7 @@ class SrnnEvaluationFrames:
         return idxs
 
     @staticmethod
-    def get_frames(
-        len_subaction_1: int, len_subaction_2: int, input_len: int, output_len: int
-    ) -> np.ndarray:
+    def get_frames(len_subaction_1: int, len_subaction_2: int, input_len: int, output_len: int) -> np.ndarray:
         """
         Returns a numpy array (subaction, bach, frame) with the frames selected for evaluation as in srnn.
 
@@ -127,9 +125,7 @@ class SrnnEvaluationFrames:
         if output_len > SUFFIX:
             raise ValueError("output_len must be smaller than or equal to 100")
 
-        start_idxs = SrnnEvaluationFrames.get_start_indices(
-            len_subaction_1, len_subaction_2
-        )
+        start_idxs = SrnnEvaluationFrames.get_start_indices(len_subaction_1, len_subaction_2)
         frame_idxs = np.zeros(
             (
                 SUBACTIONS,
@@ -140,12 +136,8 @@ class SrnnEvaluationFrames:
         )
 
         for idx in range(SRNN_EVALUATION_BACH_SIZE):
-            t0 = (
-                start_idxs[idx // SUBACTIONS][idx % SUBACTIONS] + PREFIX
-            )  # last known frame
-            frame_idxs[idx % SUBACTIONS][idx // SUBACTIONS] = np.arange(
-                t0 - input_len, t0 + output_len
-            )
+            t0 = start_idxs[idx // SUBACTIONS][idx % SUBACTIONS] + PREFIX  # last known frame
+            frame_idxs[idx % SUBACTIONS][idx // SUBACTIONS] = np.arange(t0 - input_len, t0 + output_len)
 
         return frame_idxs
 
@@ -171,9 +163,7 @@ class SrnnEvaluationFrames:
         frame_idxs_list = []
         for num_frames in num_frames_list:
             frame_idxs = []
-            for start_idx in AmassEvaluationFrames.get_start_indices(
-                mocap_len=num_frames, seq_len=seq_len * framerate
-            ):
+            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=seq_len * framerate):
                 frame_idxs.append(range(start_idx, start_idx + seq_len * framerate))
             frame_idxs_list.append(frame_idxs)
 
@@ -215,11 +205,7 @@ class AmassEvaluationFrames:
 
         frame_idxs = []
         for idx in range(subsections):
-            frame_idxs.append(
-                rng.randint(
-                    first_index + idx * subseq_len, first_index + (idx + 1) * subseq_len
-                )
-            )
+            frame_idxs.append(rng.randint(first_index + idx * subseq_len, first_index + (idx + 1) * subseq_len))
 
         return frame_idxs
 
@@ -244,20 +230,14 @@ class AmassEvaluationFrames:
         - `frame_idxs_list` (list): list of lists (num_mocap, batch, frame) of frame indices selected for evaluation.
         """
         if input_len > AMASS_INPUT_SEQ_LEN * framerate:
-            raise ValueError(
-                "input_len must be smaller than or equal to AMASS_INPUT_SEQ_LEN(2s) * framerate"
-            )
+            raise ValueError("input_len must be smaller than or equal to AMASS_INPUT_SEQ_LEN(2s) * framerate")
         if output_len > AMASS_OUTPUT_SEQ_LEN * framerate:
-            raise ValueError(
-                "output_len must be smaller than or equal to AMASS_OUTPUT_SEQ_LEN(1s) * framerate"
-            )
+            raise ValueError("output_len must be smaller than or equal to AMASS_OUTPUT_SEQ_LEN(1s) * framerate")
 
         frame_idxs_list = []
         for num_frames in num_frames_list:
             frame_idxs = []
-            for start_idx in AmassEvaluationFrames.get_start_indices(
-                mocap_len=num_frames, seq_len=AMASS_SEQ_LEN * framerate
-            ):
+            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=AMASS_SEQ_LEN * framerate):
                 t0 = start_idx + AMASS_INPUT_SEQ_LEN * framerate
                 frame_idxs.append(range(t0 - input_len, t0 + output_len))
             frame_idxs_list.append(frame_idxs)
@@ -283,26 +263,17 @@ class AmassEvaluationFrames:
         - `frame_idxs_list` (list): list of lists (num_mocap, batch, frame) of frame indices selected for the spectrum comparison.
         """
         if seq_len > AMASS_SEQ_LEN:
-            raise ValueError(
-                "seq_len must be smaller than or equal to AMASS_SEQ_LEN(3s)"
-            )
+            raise ValueError("seq_len must be smaller than or equal to AMASS_SEQ_LEN(3s)")
 
         frame_idxs_list = []
         for num_frames in num_frames_list:
             frame_idxs = []
-            for start_idx in AmassEvaluationFrames.get_start_indices(
-                mocap_len=num_frames, seq_len=seq_len * framerate
-            ):
+            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=seq_len * framerate):
                 frame_idxs.append(range(start_idx, start_idx + seq_len * framerate))
             frame_idxs_list.append(frame_idxs)
 
-        if (
-            sum(len(frame_idxs) for frame_idxs in frame_idxs_list)
-            < MIN_SPECTRUM_METRICS_EVALUATION_BACH_SIZE
-        ):
-            raise ValueError(
-                f"the number of frames selected for evaluation is less than {MIN_SPECTRUM_METRICS_EVALUATION_BACH_SIZE}"
-            )
+        if sum(len(frame_idxs) for frame_idxs in frame_idxs_list) < MIN_SPECTRUM_METRICS_EVALUATION_BACH_SIZE:
+            raise ValueError(f"the number of frames selected for evaluation is less than {MIN_SPECTRUM_METRICS_EVALUATION_BACH_SIZE}")
         return frame_idxs_list
 
 
@@ -355,9 +326,7 @@ class EvaluationProtocol:
             "euler_err_xyz": lambda m_proc: m_proc.euler_error(euler_seq="xyz"),
             "euler_err_zxy": lambda m_proc: m_proc.euler_error(euler_seq="zxy"),
             "joint_ang_diff_local": lambda m_proc: m_proc.joint_angle_difference(),
-            "joint_ang_diff_global": lambda m_proc: m_proc.joint_angle_difference(
-                use_global_rotations=True, f_kinematics_processor=fk_processor
-            ),
+            "joint_ang_diff_global": lambda m_proc: m_proc.joint_angle_difference(use_global_rotations=True, f_kinematics_processor=fk_processor),
             "positonal_err": lambda m_proc: m_proc.positional_error(fk_processor),
         }
         return metrics_dict, metric_processor_dict
@@ -499,9 +468,7 @@ class EvaluationProtocol:
         for key, metric in metric_processor_dict.items():
             metric_proc_res[key] = metric(metrics_proc)
 
-        metric_proc_res[
-            "w_distance"
-        ] = EvaluationProtocol.compute_wasserstein_distance_list(
+        metric_proc_res["w_distance"] = EvaluationProtocol.compute_wasserstein_distance_list(
             predictions=predictions,
             framerate=framerate,
             fk_processor=fk_processor,
@@ -511,9 +478,7 @@ class EvaluationProtocol:
         )
 
         for key in metrics_dict.keys():
-            metric_post_proc = MetricsPostProcessor(
-                metric_proc_res[key.replace("cumulative_", "").replace("frame_", "")]
-            )
+            metric_post_proc = MetricsPostProcessor(metric_proc_res[key.replace("cumulative_", "").replace("frame_", "")])
             metrics_value = []
             if "w_distance" == key:
                 for frame in range(len(metric_proc_res[key])):
@@ -521,9 +486,7 @@ class EvaluationProtocol:
             else:
                 if "cumulative_" in key:
                     for frame, _ in EVALUATION_T_DICT[framerate].items():
-                        metrics_value.append(
-                            metric_post_proc.cumulative(end_frame=frame, normalize=True)
-                        )
+                        metrics_value.append(metric_post_proc.cumulative(end_frame=frame, normalize=True))
                 elif "frame_" in key:
                     for frame in range(target_seq_len * 25):
                         metrics_value.append(metric_post_proc.instant(at_frame=frame))
@@ -571,10 +534,7 @@ class EvaluationProtocol:
             elif "frame_" in metric_key:
                 times_to_print = [round((idx + 1) * frame_span_ms) for idx in range(table.shape[1])]
             else:
-                times_to_print = [
-                    round((idx + 1) * frame_span_ms)
-                    for idx in EVALUATION_T_DICT[framerate].keys()
-                ]
+                times_to_print = [round((idx + 1) * frame_span_ms) for idx in EVALUATION_T_DICT[framerate].keys()]
             header = [f"{ms: >6} ms" for ms in times_to_print]
 
             t_manager = TableManager(

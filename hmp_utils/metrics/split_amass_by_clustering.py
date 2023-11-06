@@ -53,11 +53,7 @@ def is_valid_mocap(mocap_str: str) -> bool:
     ### Returns:
     - `is_valid` (bool): True if the mocap file name is valid, otherwise False.
     """
-    return (
-        mocap_str.endswith(".npz")
-        and "stagei.npz" not in mocap_str
-        and "shape.npz" not in mocap_str
-    )
+    return mocap_str.endswith(".npz") and "stagei.npz" not in mocap_str and "shape.npz" not in mocap_str
 
 
 def get_num_frames(mocap_path: str, mocap_loader: MocapLoader) -> int:
@@ -102,9 +98,7 @@ def get_mocaps_list(dataset_list: list, mocap_loader: MocapLoader) -> list:
             mocaps_list = mocaps_list + [
                 entry.path
                 for entry in os.scandir(subject)
-                if entry.is_file()
-                and is_valid_mocap(entry.name)
-                and get_num_frames(entry.path, mocap_loader) >= MIN_MOCAP_FRAMES
+                if entry.is_file() and is_valid_mocap(entry.name) and get_num_frames(entry.path, mocap_loader) >= MIN_MOCAP_FRAMES
             ]
     return mocaps_list
 
@@ -137,19 +131,11 @@ def split_amass_by_clustering(
     - `dataset_dict` (dict): dictionary of dictionaries containing the train,
         test and validation sets.
     """
-    subdataset_path_lists = [
-        os.path.join(amass_directory, subdataset) for subdataset in AMASS_DATASETS
-    ]
+    subdataset_path_lists = [os.path.join(amass_directory, subdataset) for subdataset in AMASS_DATASETS]
 
     subject_list_by_dataset = []
     for subdataset in subdataset_path_lists:
-        subject_list_by_dataset.append(
-            [
-                dirpath
-                for dirpath, _, filenames in os.walk(subdataset)
-                if any(filename.endswith(".npz") for filename in filenames)
-            ]
-        )
+        subject_list_by_dataset.append([dirpath for dirpath, _, filenames in os.walk(subdataset) if any(filename.endswith(".npz") for filename in filenames)])
     mocap_loader = MocapLoader(
         body_model_type=SmplConstants.BODY_MODEL_TYPE,
         keypoint_ids_to_load=SmplConstants.KEYPOINTS,
@@ -166,9 +152,7 @@ def split_amass_by_clustering(
         mocap_name = "_".join(mocap_path.split("/")[-3:])
         mocap_name = mocap_name[: len(mocap_name) - 4]
 
-        mocap_windows_list = mocap_windows_list + split_mocap_into_windows(
-            mocap, mocap_name
-        )
+        mocap_windows_list = mocap_windows_list + split_mocap_into_windows(mocap, mocap_name)
 
     print("{:30s} {:d}".format("Total number of mocaps:", len(mocaps_list)))
     print("{:30s} {:d}".format("Number of windows extracted:", len(mocap_windows_list)))
@@ -194,9 +178,7 @@ def split_amass_by_clustering(
     print("{:30s} {:d}".format("Valid set size:", len(valid_split)))
 
     # save mocap windows and generate the dictionary
-    dataset_dict = save_dataset_split(
-        train_split, test_split, valid_split, save_mocaps_dir
-    )
+    dataset_dict = save_dataset_split(train_split, test_split, valid_split, save_mocaps_dir)
 
     # convert the dictionary to JSON format and save it
     json_data = json.dumps(dataset_dict)
@@ -226,12 +208,8 @@ def split_mocap_into_windows(mocap, mocap_name):
     index = 0
     window_len = SOURCE_SEQ_LEN + TARGET_SEQ_LEN
     while index * MOCAP_WINDOW_STEP + window_len < rots.shape[0]:
-        new_rots = rots[
-            index * MOCAP_WINDOW_STEP : index * MOCAP_WINDOW_STEP + window_len
-        ]
-        new_trans = trans[
-            index * MOCAP_WINDOW_STEP : index * MOCAP_WINDOW_STEP + window_len
-        ]
+        new_rots = rots[index * MOCAP_WINDOW_STEP : index * MOCAP_WINDOW_STEP + window_len]
+        new_trans = trans[index * MOCAP_WINDOW_STEP : index * MOCAP_WINDOW_STEP + window_len]
         mocap_windows_list.append(
             [
                 MocapData(
@@ -351,9 +329,7 @@ def split_dataset(
         size_split_train = math.ceil(train_set_percentage / 100 * dataset_size)
 
     if min([size_split_train, size_split_test, size_split_valid]) < n_clusters:
-        raise Exception(
-            "The split sizes should be greater than the number of classes..."
-        )
+        raise Exception("The split sizes should be greater than the number of classes...")
 
     # get training set split
     seed_value = SEED

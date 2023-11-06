@@ -78,15 +78,8 @@ def get_sets_indexes_dict(
 
     # Split the shuffled indices into train, test, and validation sets
     train_set_indexes = all_samples[:num_train_samples]
-    test_set_indexes = all_samples[
-        num_train_samples : num_train_samples + num_test_samples
-    ]
-    valid_set_indexes = all_samples[
-        num_train_samples
-        + num_test_samples : num_train_samples
-        + num_test_samples
-        + num_valid_samples
-    ]
+    test_set_indexes = all_samples[num_train_samples : num_train_samples + num_test_samples]
+    valid_set_indexes = all_samples[num_train_samples + num_test_samples : num_train_samples + num_test_samples + num_valid_samples]
 
     return {
         "train": train_set_indexes,
@@ -106,11 +99,7 @@ def is_valid_mocap(mocap_str: str) -> bool:
     ### Returns:
     - `is_valid` (bool): True if the mocap file name is valid, otherwise False.
     """
-    return (
-        mocap_str.endswith(".npz")
-        and "stagei.npz" not in mocap_str
-        and "shape.npz" not in mocap_str
-    )
+    return mocap_str.endswith(".npz") and "stagei.npz" not in mocap_str and "shape.npz" not in mocap_str
 
 
 def get_num_frames(mocap_path: str, mocap_loader: MocapLoader) -> int:
@@ -155,9 +144,7 @@ def get_mocap_lists_by_dataset(dataset_list: list, mocap_loader: MocapLoader) ->
             mocap_list = [
                 entry.path
                 for entry in os.scandir(subject)
-                if entry.is_file()
-                and is_valid_mocap(entry.name)
-                and get_num_frames(entry.path, mocap_loader) >= MIN_MOCAP_FRAMES
+                if entry.is_file() and is_valid_mocap(entry.name) and get_num_frames(entry.path, mocap_loader) >= MIN_MOCAP_FRAMES
             ]
             mocap_list_by_subject.append(mocap_list)
         mocap_lists_by_dataset.append(mocap_list_by_subject)
@@ -221,17 +208,14 @@ def get_few_mocaps_subject_list(dataset: list) -> list:
     - `few_mocaps_subjects` (list): list of subjects with less than half the mean number of mocaps.
     """
     num_files = [
-        sum(is_valid_mocap(file) for file in files)
-        for subject in dataset
-        for root, dirs, files in os.walk(subject)
+        sum(is_valid_mocap(file) for file in files) for subject in dataset for root, dirs, files in os.walk(subject)
     ]  # number of mocaps for each subject
     mean_num_files = np.mean(num_files)  # mean number of mocaps
     return [
         subject
         for subject in dataset
         for root, dirs, files in os.walk(subject)
-        if sum(is_valid_mocap(file) for file in files)
-        < mean_num_files * 0.5  # if the number of mocaps is less than half the mean
+        if sum(is_valid_mocap(file) for file in files) < mean_num_files * 0.5  # if the number of mocaps is less than half the mean
     ]
 
 
@@ -270,21 +254,14 @@ def split_amass_dataset(
         "action": AMASS_DATASETS_BY_ACTION,
     }
 
-    subdataset_path_lists_dict = {
-        key: [os.path.join(amass_directory, subdataset) for subdataset in value]
-        for key, value in subdataset_lists.items()
-    }
+    subdataset_path_lists_dict = {key: [os.path.join(amass_directory, subdataset) for subdataset in value] for key, value in subdataset_lists.items()}
 
     subject_list_by_dataset_dict = {}
     for key, value in subdataset_path_lists_dict.items():
         subject_list_by_dataset = []
         for subdataset in value:
             subject_list_by_dataset.append(
-                [
-                    dirpath
-                    for dirpath, _, filenames in os.walk(subdataset)
-                    if any(filename.endswith(".npz") for filename in filenames)
-                ]
+                [dirpath for dirpath, _, filenames in os.walk(subdataset) if any(filename.endswith(".npz") for filename in filenames)]
             )
         subject_list_by_dataset_dict[key] = subject_list_by_dataset
 
@@ -294,17 +271,11 @@ def split_amass_dataset(
         target_framerate=TARGET_FRAMERATE,
     )
     mocap_lists_by_dataset_dict = {}
-    mocap_lists_by_dataset_dict["action"] = get_mocap_lists_by_dataset(
-        subject_list_by_dataset_dict["action"], mocap_loader
-    )
+    mocap_lists_by_dataset_dict["action"] = get_mocap_lists_by_dataset(subject_list_by_dataset_dict["action"], mocap_loader)
 
-    subject_list_by_dataset_dict["subject"] = get_random_subject_list_by_dataset(
-        subject_list_by_dataset_dict["subject"]
-    )
+    subject_list_by_dataset_dict["subject"] = get_random_subject_list_by_dataset(subject_list_by_dataset_dict["subject"])
 
-    mocap_lists_by_dataset_dict["action"] = get_random_mocap_list_by_dataset(
-        mocap_lists_by_dataset_dict["action"]
-    )
+    mocap_lists_by_dataset_dict["action"] = get_random_mocap_list_by_dataset(mocap_lists_by_dataset_dict["action"])
 
     sets_by_dataset_dict = {"train": {}, "test": {}, "validation": {}}
     for subdataset_idx, dataset in enumerate(subject_list_by_dataset_dict["subject"]):
@@ -323,24 +294,18 @@ def split_amass_dataset(
             sets_dict[key] = [dataset[index] for index in value]
         sets_dict["train"].extend(few_mocaps_subjects)
 
-        mocap_lists_by_set = get_mocap_lists_by_dataset(
-            sets_dict.values(), mocap_loader
-        )
+        mocap_lists_by_set = get_mocap_lists_by_dataset(sets_dict.values(), mocap_loader)
 
         sets_keys = list(sets_dict.keys())
         sets_dict = {}
         for idx, mocap_list_by_subject in enumerate(mocap_lists_by_set):
-            sets_dict[sets_keys[idx]] = [
-                item for mocap_list in mocap_list_by_subject for item in mocap_list
-            ]
+            sets_dict[sets_keys[idx]] = [item for mocap_list in mocap_list_by_subject for item in mocap_list]
 
         subdatset_name = subdataset_lists["subject"][subdataset_idx]
         for key, value in sets_dict.items():
             sets_by_dataset_dict[key][subdatset_name] = value
 
-    for subdataset_idx, mocap_list_by_subject in enumerate(
-        mocap_lists_by_dataset_dict["action"]
-    ):
+    for subdataset_idx, mocap_list_by_subject in enumerate(mocap_lists_by_dataset_dict["action"]):
         sets_dict = {key: [] for key in sets_by_dataset_dict.keys()}
         for mocap_list in mocap_list_by_subject:
             if len(mocap_list) < 3:
@@ -363,10 +328,7 @@ def split_amass_dataset(
         if use_relative_path:
             for key, value in sets_by_dataset_dict.items():
                 for subdataset_name, mocap_list in value.items():
-                    sets_by_dataset_dict[key][subdataset_name] = [
-                        os.path.relpath(mocap_path, amass_directory)
-                        for mocap_path in mocap_list
-                    ]
+                    sets_by_dataset_dict[key][subdataset_name] = [os.path.relpath(mocap_path, amass_directory) for mocap_path in mocap_list]
 
         # Convert the dictionary to JSON format
         json_data = json.dumps(sets_by_dataset_dict)
@@ -382,9 +344,7 @@ def split_amass_dataset(
     return sets_by_dataset_dict
 
 
-def load_sets_by_dataset_dict(
-    sets_by_dataset_dict_file_name: str, amass_directory: Optional[str] = None
-) -> dict:
+def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str, amass_directory: Optional[str] = None) -> dict:
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
@@ -409,10 +369,7 @@ def load_sets_by_dataset_dict(
     if amass_directory != None:
         for key, value in sets_by_dataset_dict.items():
             for subdataset_name, mocap_list in value.items():
-                sets_by_dataset_dict[key][subdataset_name] = [
-                    os.path.join(amass_directory, mocap_path)
-                    for mocap_path in mocap_list
-                ]
+                sets_by_dataset_dict[key][subdataset_name] = [os.path.join(amass_directory, mocap_path) for mocap_path in mocap_list]
     return sets_by_dataset_dict
 
 
@@ -434,12 +391,8 @@ def compute_mocap_info(dataset_name: str, mocap_info_by_set_dict: dict) -> dict:
     return {
         "num_mocaps": sum([set_info["num_mocaps"] for set_info in dataset_sets_info]),
         "num_frames": sum([set_info["num_frames"] for set_info in dataset_sets_info]),
-        "min_num_frames": min(
-            [set_info["min_num_frames"] for set_info in dataset_sets_info]
-        ),
-        "max_num_frames": max(
-            [set_info["max_num_frames"] for set_info in dataset_sets_info]
-        ),
+        "min_num_frames": min([set_info["min_num_frames"] for set_info in dataset_sets_info]),
+        "max_num_frames": max([set_info["max_num_frames"] for set_info in dataset_sets_info]),
         "mean_num_frames": np.average(
             [set_info["mean_num_frames"] for set_info in dataset_sets_info],
             weights=[set_info["num_mocaps"] for set_info in dataset_sets_info],
@@ -484,25 +437,15 @@ def print_amass_sets_info(sets_by_dataset_dict: dict) -> None:
                 "mean_num_frames": np.mean(list_of_num_frames),
                 "std_num_frames": np.std(list_of_num_frames),
             }
-        mocap_info_dict[dataset_name] = compute_mocap_info(
-            dataset_name, mocap_info_by_set_dict
-        )
+        mocap_info_dict[dataset_name] = compute_mocap_info(dataset_name, mocap_info_by_set_dict)
 
     for set_name, set in mocap_info_by_set_dict.items():
         datasets_info = [set[dataset_name] for dataset_name in AMASS_DATASETS]
         mocap_info_by_set_dict[set_name]["AMASS"] = {
-            "num_mocaps": sum(
-                [dataset_info["num_mocaps"] for dataset_info in datasets_info]
-            ),
-            "num_frames": sum(
-                [dataset_info["num_frames"] for dataset_info in datasets_info]
-            ),
-            "min_num_frames": min(
-                [dataset_info["min_num_frames"] for dataset_info in datasets_info]
-            ),
-            "max_num_frames": max(
-                [dataset_info["max_num_frames"] for dataset_info in datasets_info]
-            ),
+            "num_mocaps": sum([dataset_info["num_mocaps"] for dataset_info in datasets_info]),
+            "num_frames": sum([dataset_info["num_frames"] for dataset_info in datasets_info]),
+            "min_num_frames": min([dataset_info["min_num_frames"] for dataset_info in datasets_info]),
+            "max_num_frames": max([dataset_info["max_num_frames"] for dataset_info in datasets_info]),
             "mean_num_frames": np.average(
                 [dataset_info["mean_num_frames"] for dataset_info in datasets_info],
                 weights=[dataset_info["num_mocaps"] for dataset_info in datasets_info],
@@ -518,9 +461,7 @@ def print_amass_sets_info(sets_by_dataset_dict: dict) -> None:
         tot_num_frames = mocap_info["num_frames"]
         print(f"  Number of mocaps: {tot_num_mocaps}")
         print(f"  Number of frames: {tot_num_frames}")
-        print(
-            f"  Total number of minutes: {mocap_info['num_frames']/TARGET_FRAMERATE/60:.3f}"
-        )
+        print(f"  Total number of minutes: {mocap_info['num_frames']/TARGET_FRAMERATE/60:.3f}")
         print(f"  Min number of frames: {mocap_info['min_num_frames']}")
         print(f"  Max number of frames: {mocap_info['max_num_frames']}")
         print(f"  Mean number of frames: {mocap_info['mean_num_frames']:.3f}")
@@ -530,16 +471,10 @@ def print_amass_sets_info(sets_by_dataset_dict: dict) -> None:
             mocap_info = set[dataset_name]
             print(f"  Set name: {set_name}")
             print(f"    Number of mocaps: {mocap_info['num_mocaps']}")
-            print(
-                f"    Percentage of mocaps: {mocap_info['num_mocaps']/tot_num_mocaps*100:.3f}%"
-            )
+            print(f"    Percentage of mocaps: {mocap_info['num_mocaps']/tot_num_mocaps*100:.3f}%")
             print(f"    Number of frames: {mocap_info['num_frames']}")
-            print(
-                f"    Total number of minutes: {mocap_info['num_frames']/TARGET_FRAMERATE/60:.3f}"
-            )
-            print(
-                f"    Percentage of frames: {mocap_info['num_frames']/tot_num_frames*100:.3f}%"
-            )
+            print(f"    Total number of minutes: {mocap_info['num_frames']/TARGET_FRAMERATE/60:.3f}")
+            print(f"    Percentage of frames: {mocap_info['num_frames']/tot_num_frames*100:.3f}%")
             print(f"    Min number of frames: {mocap_info['min_num_frames']}")
             print(f"    Max number of frames: {mocap_info['max_num_frames']}")
             print(f"    Mean number of frames: {mocap_info['mean_num_frames']:.3f}")

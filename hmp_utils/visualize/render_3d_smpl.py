@@ -29,9 +29,7 @@ import imageio
 
 
 # render with pyrender
-def img_from_pyrender(
-    joints, plot_joints, vertices, vertex_colors, gui_viewport, model_faces
-):
+def img_from_pyrender(joints, plot_joints, vertices, vertex_colors, gui_viewport, model_faces):
     import pyrender
     import trimesh
 
@@ -92,9 +90,7 @@ def img_from_pyrender(
         center = (min_bounds + max_bounds) / 2.0
         radius = torch.norm(max_bounds - center)
         # Calculate the optimal camera position
-        distance = radius / torch.sin(
-            torch.tensor(yfov / 2)
-        )  # yfov in our example is pi/3
+        distance = radius / torch.sin(torch.tensor(yfov / 2))  # yfov in our example is pi/3
         camera_pose = torch.eye(4)
         camera_pose[:3, 3] = center + torch.tensor([0, 0, distance])
 
@@ -109,11 +105,7 @@ def img_from_pyrender(
 
     # solid body
     renderer = pyrender.OffscreenRenderer(width, height)
-    render_flags = (
-        pyrender.RenderFlags.FACE_NORMALS
-        | pyrender.RenderFlags.SHADOWS_DIRECTIONAL
-        | pyrender.RenderFlags.RGBA
-    )
+    render_flags = pyrender.RenderFlags.FACE_NORMALS | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.RGBA
     # pyrender.RenderFlags.ALL_SOLID
     # pyrender.RenderFlags.ALL_WIREFRAME
     render_output = renderer.render(scene, flags=render_flags)
@@ -126,12 +118,7 @@ def img_from_pyrender(
     img1 = Image.fromarray(color)
 
     # wireframe
-    render_flags = (
-        pyrender.RenderFlags.FACE_NORMALS
-        | pyrender.RenderFlags.SHADOWS_DIRECTIONAL
-        | pyrender.RenderFlags.RGBA
-        | pyrender.RenderFlags.ALL_WIREFRAME
-    )
+    render_flags = pyrender.RenderFlags.FACE_NORMALS | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.RGBA | pyrender.RenderFlags.ALL_WIREFRAME
     # pyrender.RenderFlags.ALL_SOLID
     render_output = renderer.render(scene, flags=render_flags)
 
@@ -324,9 +311,7 @@ def render_3d_smpl(
     framerate = float(amass_data["mocap_framerate"]) / framerate_factor
     joints_to_load = 22  # dont' load the hands
     frame_to_load = slice(0, amass_data["poses"].shape[0], framerate_factor)
-    amass_smpl_poses = np.array(amass_data["poses"])[
-        frame_to_load, 3 : joints_to_load * 3
-    ]
+    amass_smpl_poses = np.array(amass_data["poses"])[frame_to_load, 3 : joints_to_load * 3]
     mocap_poses = torch.tensor(amass_smpl_poses, dtype=torch.float32)
     vertex_colors = torch.tensor([0.1, 0.1, 0.1, 0.7])
 
@@ -337,9 +322,7 @@ def render_3d_smpl(
         # old single thread version
         video_frames = []
         for frame_idx in trange(total_frames):
-            vertices, joints = get_vertices_and_joints(
-                mocap_poses[frame_idx], betas, expression, model
-            )
+            vertices, joints = get_vertices_and_joints(mocap_poses[frame_idx], betas, expression, model)
             img = process_frame(
                 vertices=vertices,
                 joints=joints,
@@ -354,9 +337,7 @@ def render_3d_smpl(
         # new multithread version
         arg_list = []
         for frame in range(total_frames):
-            vertices, joints = get_vertices_and_joints(
-                mocap_poses[frame], betas, expression, model
-            )
+            vertices, joints = get_vertices_and_joints(mocap_poses[frame], betas, expression, model)
             # arguments for process_frame function
             arg_list.append(
                 {

@@ -1,6 +1,7 @@
 import os
 import errno
 
+
 def mkdir_if_missing(directory):
     if not os.path.exists(directory):
         try:

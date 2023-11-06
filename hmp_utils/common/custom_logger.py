@@ -17,10 +17,7 @@ def log_line(color_name, effect_name=None):
         effect = Effects[effect_name] if effect_name else ""
         return Colors[color_name] + effect + txt + ENDC
 
-    return (
-        f'{color("[%(levelname)s]")} %(message)s\t'
-        f'({color("%(filename)s")} | line: %(lineno)d)'
-    )
+    return f'{color("[%(levelname)s]")} %(message)s\t' f'({color("%(filename)s")} | line: %(lineno)d)'
 
 
 class CustomFormatter(logging.Formatter):

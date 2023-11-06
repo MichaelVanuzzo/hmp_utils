@@ -37,9 +37,7 @@ class TableManager:
         elif data.ndim == 2:
             self.data = data
         else:
-            raise Exception(
-                f"The data has the wrong number of dimensions, use 1d or 2d array (ndim = {data.ndim})"
-            )
+            raise Exception(f"The data has the wrong number of dimensions, use 1d or 2d array (ndim = {data.ndim})")
 
         self.table_name = table_name
 

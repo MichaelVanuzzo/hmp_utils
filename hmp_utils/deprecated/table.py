@@ -34,10 +34,7 @@ class Table:
         elif data.ndim == 2:
             self.data = data
         else:
-            raise Exception(
-                f"The data has the wrong number of dimensions,"
-                f" use 1d or 2d array (ndim = {data.ndim})"
-            )
+            raise Exception(f"The data has the wrong number of dimensions," f" use 1d or 2d array (ndim = {data.ndim})")
         row_num, col_num = self.data.shape
 
         self.table_name = table_name
@@ -47,11 +44,7 @@ class Table:
             index = [f"Row [{i}]" for i in range(row_num)]
         # check if the index is valid
         if len(index) != row_num:
-            raise Exception(
-                f"The index must have the same number of elements as the rows in data\n"
-                f"index = {len(index)}\n"
-                f"rows = {row_num}\n"
-            )
+            raise Exception(f"The index must have the same number of elements as the rows in data\n" f"index = {len(index)}\n" f"rows = {row_num}\n")
         self.index = index
 
         # create header if missing
@@ -59,11 +52,7 @@ class Table:
             header = [f"Col [{i}]" for i in range(col_num)]
         # check if the header is valid
         if len(header) != col_num:
-            raise Exception(
-                f"The header must have the same number of elements as the columns in data\n"
-                f"header = {len(header)}\n"
-                f"columns = {col_num}\n"
-            )
+            raise Exception(f"The header must have the same number of elements as the columns in data\n" f"header = {len(header)}\n" f"columns = {col_num}\n")
         self.header = header
 
         # other options
@@ -96,11 +85,7 @@ class Table:
         columns = columns if columns != None else list(range(self.data.shape[1]))
         if header != None:
             if len(header) != len(columns):
-                raise Exception(
-                    "header and columns must have the same number of elements\n"
-                    f"header = {len(header)}\n"
-                    f"columns = {len(columns)}\n"
-                )
+                raise Exception("header and columns must have the same number of elements\n" f"header = {len(header)}\n" f"columns = {len(columns)}\n")
             header = [f"{i} |" for i in header]
         else:
             header = [f"{self.header[i]} |" for i in columns]
