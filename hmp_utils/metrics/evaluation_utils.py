@@ -1,3 +1,4 @@
+import pkg_resources
 import numpy as np
 from typing import Union, Optional
 import math
@@ -9,6 +10,7 @@ from .. import (
     MetricsPostProcessor,
     ForwardKinematics,
     BodyConstants,
+    BodyModelType,
     TableManager,
 )
 
@@ -48,6 +50,29 @@ EVALUATION_T_25 = {int(t / (1000 / 25) - 1): t for t in EVALUATION_TIMESTAMPS_25
 EVALUATION_T_30 = {int(t / (1000 / 30) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
 EVALUATION_T_60 = {int(t / (1000 / 60) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
 EVALUATION_T_DICT = {25: EVALUATION_T_25, 30: EVALUATION_T_30, 60: EVALUATION_T_60}
+
+H36M_PSD = {
+    "train": pkg_resources.resource_filename(__name__, "../pds_files/h36m_train_psd.npy"),
+    "test": pkg_resources.resource_filename(__name__, "../pds_files/h36m_test_psd.npy"),
+    "validation": pkg_resources.resource_filename(__name__, "../pds_files/h36m_validation_psd.npy"),
+}
+
+AMASS_25_PSD = {
+    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_train_psd.npy"),
+    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_test_psd.npy"),
+    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_validation_psd.npy"),
+}
+AMASS_30_PSD = {
+    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_30_train_psd.npy"),
+    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_30_test_psd.npy"),
+    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass_30_validation_psd.npy"),
+}
+AMASS_60_PSD = {
+    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_60_train_psd.npy"),
+    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_60_test_psd.npy"),
+    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass_60_validation_psd.npy"),
+}
+AMASS_PSD_BY_FRAMERATE = {25: AMASS_25_PSD, 30: AMASS_30_PSD, 60: AMASS_60_PSD}
 
 
 class SrnnEvaluationFrames:
@@ -339,30 +364,33 @@ class EvaluationProtocol:
 
     @staticmethod
     def load_power_spectral_density_dict(
-        power_spectral_density_files: "list[str]",
+        body_model_type: BodyModelType,
+        framerate: int,
     ) -> tuple([dict, dict]):
         """
         Load the power spectral density dictionaries.
 
         ---
         ### Args:
-        - `power_spectral_density_files` (list): list of power spectral density files.
+        - `body_model_type` (BodyModelType): body model type.
+        - `framerate` (int): framerate of the mocaps.
         ---
         ### Returns:
         - `power_spectral_density_dict` (dict): dictionary of power spectral density.
         - `removed_joints_dict` (dict): dictionary of removed joints.
         """
-        home_path = os.path.expanduser("~")
+        if body_model_type == BodyModelType.H36M:
+            power_spectral_density_files = H36M_PSD
+        elif body_model_type == BodyModelType.AMASS:
+            power_spectral_density_files = AMASS_PSD_BY_FRAMERATE[framerate]
         power_spectral_density_dict = {}
         removed_joints_dict = {}
         for key, file in power_spectral_density_files.items():
-            power_spectral_density_dict[key] = np.load(os.path.join(home_path, file))
+            power_spectral_density_dict[key] = np.load(file)
             (
                 power_spectral_density_dict[key],
                 removed_joints_dict[key],
-            ) = SpectrumMetricsProcessor.remove_static_joints(
-                power_spectral_density_dict[key]
-            )
+            ) = SpectrumMetricsProcessor.remove_static_joints(power_spectral_density_dict[key])
         return power_spectral_density_dict, removed_joints_dict
 
     @staticmethod
@@ -371,9 +399,7 @@ class EvaluationProtocol:
         framerate: int,
         fk_processor: ForwardKinematics,
         bodyConstants: BodyConstants,
-        power_spectral_density_dict: dict,
-        removed_joints_dict: dict,
-        dicts_key: str = "train",
+        set_of_psd_to_use: str = "train",
         zero_velocity: bool = False,
     ) -> list:
         """
@@ -385,17 +411,15 @@ class EvaluationProtocol:
         - `framerate` (int): framerate of the mocaps.
         - `fk_processor` (ForwardKinematics): forward kinematics processor.
         - `bodyConstants` (BodyConstants): body constants.
-        - `power_spectral_density_dict` (dict): dictionary of power spectral density.
-        - `removed_joints_dict` (dict): dictionary of removed joints.
-        - `dicts_key` (str): key to use in the dictionaries.
+        - `set_of_psd_to_use` (str): computed power spectral density to use.
         - `zero_velocity` (bool): if True the Zero-Velocity model is used.
         ---
         ### Returns:
         - `error_list` (list): list of wasserstein distance.
         """
-        pos_predictions = fk_processor.compute_fk(
-            predictions, apply_root_rotation=False
-        )  # (batch, seq_len, num_joints, 3)
+        power_spectral_density_dict, removed_joints_dict = EvaluationProtocol.load_power_spectral_density_dict(bodyConstants.BODY_MODEL_TYPE, framerate)
+
+        pos_predictions = fk_processor.compute_fk(predictions, apply_root_rotation=False)  # (batch, seq_len, num_joints, 3)
         error_list = []
         seq_len = pos_predictions.shape[-3]
         window_len = SPECTRUM_EVALUATION_SEQ_LEN * framerate
@@ -413,18 +437,12 @@ class EvaluationProtocol:
                     psd_pred_target,
                     removed_joints,
                 ) = SpectrumMetricsProcessor.remove_static_joints(psd_pred_target)
-                if removed_joints != removed_joints_dict[dicts_key]:
+                if removed_joints != removed_joints_dict[set_of_psd_to_use]:
                     raise Exception("Removed joints are not the same")
             else:
-                psd_pred_target = np.delete(
-                    psd_pred_target, removed_joints_dict[dicts_key], axis=1
-                )
+                psd_pred_target = np.delete(psd_pred_target, removed_joints_dict[set_of_psd_to_use], axis=1)
 
-            error_list.append(
-                SpectrumMetricsProcessor.wasserstein_distance(
-                    power_spectral_density_dict[dicts_key], psd_pred_target
-                )
-            )
+            error_list.append(SpectrumMetricsProcessor.wasserstein_distance(power_spectral_density_dict[set_of_psd_to_use], psd_pred_target))
         return error_list  # (seq_len - window_len + 1)
 
     @staticmethod
@@ -440,10 +458,9 @@ class EvaluationProtocol:
         action: str,
         metrics_dict: dict,
         metric_processor_dict: dict,
-        power_spectral_density_dict: dict,
-        removed_joints_dict: dict,
-        dicts_key: str = "train",
+        set_of_psd_to_use: str = "train",
         zero_velocity=False,
+        use_global_rotations=False,
     ) -> None:
         """
         Compute all the metrics and update the `metrics_res_by_action_dict` dictionary.
@@ -461,18 +478,22 @@ class EvaluationProtocol:
         - `action` (str): action name.
         - `metrics_dict` (dict): dictionary of metrics names.
         - `metric_processor_dict` (dict): dictionary of metrics processors.
-        - `power_spectral_density_dict` (dict): dictionary of power spectral density.
-        - `removed_joints_dict` (dict): dictionary of removed joints.
-        - `dicts_key` (str): key to use in the dictionaries.
+        - `set_of_psd_to_use` (str): computed power spectral density to use.
         - `zero_velocity` (bool): if True the Zero-Velocity model is used.
+        - `use_global_rotations` (bool): if True the global rotations are used.
         """
         metric_proc_res = {}
         metric_proc_res["default_error"] = default_error
 
+        if use_global_rotations:
+            joints_to_compute = bodyConstants.MAJOR_JOINTS
+        else:
+            joints_to_compute = [i for i in bodyConstants.MAJOR_JOINTS if i != 0]
+
         metrics_proc = MetricsProcessor(
             predictions=predictions,
             targets=targets,
-            joints_to_compute=bodyConstants.KEYPOINTS,
+            joints_to_compute=joints_to_compute,
         )
 
         for key, metric in metric_processor_dict.items():
@@ -485,9 +506,7 @@ class EvaluationProtocol:
             framerate=framerate,
             fk_processor=fk_processor,
             bodyConstants=bodyConstants,
-            power_spectral_density_dict=power_spectral_density_dict,
-            removed_joints_dict=removed_joints_dict,
-            dicts_key=dicts_key,
+            set_of_psd_to_use=set_of_psd_to_use,
             zero_velocity=zero_velocity,
         )
 
@@ -539,23 +558,18 @@ class EvaluationProtocol:
         """
         frame_span_ms = 1000 / framerate
         index = [action for action in metrics_res_by_action_dict.keys()]
+        if len(index) > 1:
+            add_to_index = ["mean"]
+        else:
+            add_to_index = []
         for metric_key, table_title in metrics_dict.items():
-            table = np.array(
-                [metrics_res_by_action_dict[action][metric_key] for action in index]
-            )
+            table = np.array([metrics_res_by_action_dict[action][metric_key] for action in index])
             if len(index) > 1:
                 table = np.vstack([table, np.mean(table, axis=0)])
-                index.append("mean")
-
             if "w_distance" == metric_key:
-                times_to_print = [
-                    SPECTRUM_EVALUATION_SEQ_LEN * 1000 + round(idx * frame_span_ms)
-                    for idx in range(table.shape[0])
-                ]
+                times_to_print = [SPECTRUM_EVALUATION_SEQ_LEN * 1000 + round(idx * frame_span_ms) for idx in range(table.shape[1])]
             elif "frame_" in metric_key:
-                times_to_print = [
-                    round((idx + 1) * frame_span_ms) for idx in range(table.shape[0])
-                ]
+                times_to_print = [round((idx + 1) * frame_span_ms) for idx in range(table.shape[1])]
             else:
                 times_to_print = [
                     round((idx + 1) * frame_span_ms)
@@ -565,9 +579,9 @@ class EvaluationProtocol:
 
             t_manager = TableManager(
                 data=table,
-                table_name=f"{table_title}.csv",
+                table_name=table_title,
                 header=header,
-                index=index,
+                index=index + add_to_index,
             )
             if print_table:
                 t_manager.print()
