@@ -57,6 +57,12 @@ H36M_PSD = {
     "validation": pkg_resources.resource_filename(__name__, "../pds_files/h36m_validation_psd.npy"),
 }
 
+AMASS2H36M_PSD = {
+    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass2h36m_train_psd.npy"),
+    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass2h36m_test_psd.npy"),
+    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass2h36m_validation_psd.npy"),
+}
+
 AMASS_25_PSD = {
     "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_train_psd.npy"),
     "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_test_psd.npy"),
@@ -335,6 +341,7 @@ class EvaluationProtocol:
     def load_power_spectral_density_dict(
         body_model_type: BodyModelType,
         framerate: int,
+        is_amass2h36m: bool = False,
     ) -> tuple([dict, dict]):
         """
         Load the power spectral density dictionaries.
@@ -343,13 +350,17 @@ class EvaluationProtocol:
         ### Args:
         - `body_model_type` (BodyModelType): body model type.
         - `framerate` (int): framerate of the mocaps.
+        - `is_amass2h36m` (bool): if True the AMASS dataset converted to Human3.6m is used.
         ---
         ### Returns:
         - `power_spectral_density_dict` (dict): dictionary of power spectral density.
         - `removed_joints_dict` (dict): dictionary of removed joints.
         """
         if body_model_type == BodyModelType.H36M:
-            power_spectral_density_files = H36M_PSD
+            if not is_amass2h36m:
+                power_spectral_density_files = H36M_PSD
+            else:
+                power_spectral_density_files = AMASS2H36M_PSD
         elif body_model_type == BodyModelType.AMASS:
             power_spectral_density_files = AMASS_PSD_BY_FRAMERATE[framerate]
         power_spectral_density_dict = {}
@@ -370,6 +381,7 @@ class EvaluationProtocol:
         bodyConstants: BodyConstants,
         set_of_psd_to_use: str = "train",
         zero_velocity: bool = False,
+        is_amass2h36m: bool = False,
     ) -> list:
         """
         Compute the wasserstein distance list.
@@ -382,11 +394,12 @@ class EvaluationProtocol:
         - `bodyConstants` (BodyConstants): body constants.
         - `set_of_psd_to_use` (str): computed power spectral density to use.
         - `zero_velocity` (bool): if True the Zero-Velocity model is used.
+        - `is_amass2h36m` (bool): if True the AMASS dataset converted to Human3.6m is used.
         ---
         ### Returns:
         - `error_list` (list): list of wasserstein distance.
         """
-        power_spectral_density_dict, removed_joints_dict = EvaluationProtocol.load_power_spectral_density_dict(bodyConstants.BODY_MODEL_TYPE, framerate)
+        power_spectral_density_dict, removed_joints_dict = EvaluationProtocol.load_power_spectral_density_dict(bodyConstants.BODY_MODEL_TYPE, framerate, is_amass2h36m)
 
         pos_predictions = fk_processor.compute_fk(predictions, apply_root_rotation=False)  # (batch, seq_len, num_joints, 3)
         error_list = []
@@ -430,6 +443,7 @@ class EvaluationProtocol:
         set_of_psd_to_use: str = "train",
         zero_velocity=False,
         use_global_rotations=False,
+        is_amass2h36m: bool = False,
     ) -> None:
         """
         Compute all the metrics and update the `metrics_res_by_action_dict` dictionary.
@@ -450,6 +464,7 @@ class EvaluationProtocol:
         - `set_of_psd_to_use` (str): computed power spectral density to use.
         - `zero_velocity` (bool): if True the Zero-Velocity model is used.
         - `use_global_rotations` (bool): if True the global rotations are used.
+        - `is_amass2h36m` (bool): if True the AMASS dataset converted to Human3.6m is used.
         """
         metric_proc_res = {}
         metric_proc_res["default_error"] = default_error
@@ -475,6 +490,7 @@ class EvaluationProtocol:
             bodyConstants=bodyConstants,
             set_of_psd_to_use=set_of_psd_to_use,
             zero_velocity=zero_velocity,
+            is_amass2h36m=is_amass2h36m,
         )
 
         for key in metrics_dict.keys():
