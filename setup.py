@@ -15,6 +15,6 @@ setup(
         # 'torch',
     ],
     package_data={
-        "hmp_utils": ["pds_files/*.npy"],
+        "hmp_utils": ["pds_files/*.npy","amass_split.json"],
     },
 )

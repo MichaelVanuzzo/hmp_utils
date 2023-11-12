@@ -344,15 +344,15 @@ def split_amass_dataset(
     return sets_by_dataset_dict
 
 
-def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str, amass_directory: Optional[str] = None) -> dict:
+def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: Optional[str] = None, amass_directory: Optional[str] = None) -> dict:
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     for each sub dataset in AMASS_DATASETS_BY_SUBJECT and AMASS_DATASETS_BY_ACTION.
 
     ---
     ### Args:
-    - `sets_by_dataset_dict_file_name` (str): absolute path and name (without .json) of
-        the file containing the dictionary.
+    - `sets_by_dataset_dict_file_name` (str)(optional): absolute path and name (without .json) of
+        the file containing the dictionary. If None, the standard file is loaded.
         Example: '/path/to/folder/sets_by_dataset_dict'.
     - `amass_directory` (str)(optional): absolute path to the AMASS dataset root directory if the
         mocap paths in the dictionary are relative.
@@ -362,6 +362,8 @@ def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: str, amass_directo
         test and validation sets for each sub dataset in AMASS_DATASETS_BY_SUBJECT and
         AMASS_DATASETS_BY_ACTION.
     """
+    if sets_by_dataset_dict_file_name == None:
+        sets_by_dataset_dict_file_name = os.path.join(os.path.dirname(__name__), "../amass_split.json")
     with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
         json_data = file.read()
     sets_by_dataset_dict = json.loads(json_data)
