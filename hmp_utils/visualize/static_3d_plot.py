@@ -3,7 +3,7 @@ import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from typing import Optional
 from mpl_toolkits.mplot3d import Axes3D
-from .. import RotConvert
+from .. import RotConverter
 
 
 def plot_body_keypoints(
@@ -73,11 +73,9 @@ def plot_body_keypoints(
     # keypoint_pos_lst is a list of poses
     if body_rotation != (0, 0, 0):
         body_rotation = np.array(body_rotation) * np.pi / 180
-        view_rotmat = RotConvert.euler2rotmat(body_rotation, eul_seq=("xyz"))
+        view_rotmat = RotConverter.euler2rotmat(body_rotation, eul_seq=("xyz"))
         for idx, body in enumerate(keypoint_pos_lst):
-            keypoint_pos_lst[idx] = np.apply_along_axis(
-                lambda x: np.matmul(view_rotmat, x), axis=-1, arr=body
-            )
+            keypoint_pos_lst[idx] = np.apply_along_axis(lambda x: np.matmul(view_rotmat, x), axis=-1, arr=body)
 
     plot_ranges_lst = []
 
@@ -97,11 +95,7 @@ def plot_body_keypoints(
             # Plot the keypoint location
             keyp_name = ""
             if keypoint_names is not None:
-                keyp_name = (
-                    f"{i}: {keypoint_names[pose_id][i]}"
-                    if i < len(keypoint_names[pose_id])
-                    else ""
-                )
+                keyp_name = f"{i}: {keypoint_names[pose_id][i]}" if i < len(keypoint_names[pose_id]) else ""
 
             ax.scatter(
                 point[0],
@@ -162,9 +156,7 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     Set parents to None in order to use the origin as a parent for all the points.
     """
 
-    def plot_body_keypoints_(
-        elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider
-    ):
+    def plot_body_keypoints_(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
         return plot_body_keypoints(
             keypoint_pos_lst=frame_joint_pos,
             parents_lst=parents,
@@ -177,18 +169,10 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
         )
 
     # Create the sliders and display them
-    elevation_slider = widgets.FloatSlider(
-        min=0, max=360, value=20, description="Elevation"
-    )
-    azimuth_slider = widgets.FloatSlider(
-        min=0, max=360, value=100, description="Azimuth"
-    )
-    view_axis_slider = widgets.IntSlider(
-        min=0, max=1, value=1, description="Axis grids"
-    )
-    view_joint_slider = widgets.IntSlider(
-        min=0, max=1, value=1, description="Joint IDs"
-    )
+    elevation_slider = widgets.FloatSlider(min=0, max=360, value=20, description="Elevation")
+    azimuth_slider = widgets.FloatSlider(min=0, max=360, value=100, description="Azimuth")
+    view_axis_slider = widgets.IntSlider(min=0, max=1, value=1, description="Axis grids")
+    view_joint_slider = widgets.IntSlider(min=0, max=1, value=1, description="Joint IDs")
 
     widgets.interact(
         plot_body_keypoints_,

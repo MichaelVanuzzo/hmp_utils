@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from typing import Union, Optional
 
-from .. import RotConvert
+from .. import RotConverter
 from .. import ForwardKinematics, FkReturnType
 
 """
@@ -57,8 +57,7 @@ class MetricsProcessor:
 
         if not self.predictions_aa.shape[-1] == self.targets_aa.shape[-1] == 3:
             raise Exception(
-                "predictions and targets have to be in angle-axis representation with 3 "
-                "components (3d vector which mangitude is the rotation angle)"
+                "predictions and targets have to be in angle-axis representation with 3 " "components (3d vector which mangitude is the rotation angle)"
             )
         if self.predictions_aa.shape != self.targets_aa.shape:
             raise Exception("Targets and predictions must have same shapes")
@@ -68,7 +67,7 @@ class MetricsProcessor:
 
     def euler_error(
         self,
-        euler_seq: str = RotConvert.DEFAULT_EULER_SEQ,
+        euler_seq: str = RotConverter.DEFAULT_EULER_SEQ,
         errors_computed_per_joint: bool = False,
         joint_weights: Optional[Union[list, np.ndarray]] = None,
     ) -> np.ndarray:
@@ -97,33 +96,25 @@ class MetricsProcessor:
         n_joints = self.targets_aa.shape[-2]
 
         # convert into Euler representation
-        euler_preds = RotConvert.aa2euler(self.predictions_aa, euler_seq)
-        euler_targs = RotConvert.aa2euler(self.targets_aa, euler_seq)
+        euler_preds = RotConverter.aa2euler(self.predictions_aa, euler_seq)
+        euler_targs = RotConverter.aa2euler(self.targets_aa, euler_seq)
 
         # reshape to (-1, len(self.joints_to_compute), 3)
-        euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[
-            :, self.joints_to_compute, :
-        ]
-        euler_targs = np.reshape(euler_targs, [-1, n_joints, 3])[
-            :, self.joints_to_compute, :
-        ]
+        euler_preds = np.reshape(euler_preds, [-1, n_joints, 3])[:, self.joints_to_compute, :]
+        euler_targs = np.reshape(euler_targs, [-1, n_joints, 3])[:, self.joints_to_compute, :]
 
         n_joints = len(self.joints_to_compute)
 
         if joint_weights is None:
             joint_weights = np.ones(n_joints)
         if n_joints != len(joint_weights):
-            raise Exception(
-                "The length of joints_to_compute and joint_weights must be the same"
-            )
+            raise Exception("The length of joints_to_compute and joint_weights must be the same")
 
         if errors_computed_per_joint:
             # Compute euclidean distance (L2 norm) on the body joints (vectors like (3))
             # The resulting error tensor will have n_joints Euler distance per time step per sequence
             euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=-1)
-            euc_distance = np.average(
-                euc_distance, axis=-1, weights=joint_weights
-            )  # (..., )
+            euc_distance = np.average(euc_distance, axis=-1, weights=joint_weights)  # (..., )
 
         else:
             # reshape to (-1, n_joints*3)
@@ -168,21 +159,14 @@ class MetricsProcessor:
 
         if use_global_rotations:
             if f_kinematics_processor is None:
-                raise Exception(
-                    "When use_global_rotations is true, the f_kinematics_processor "
-                    "must be provided (ForwardKinematics class)"
-                )
+                raise Exception("When use_global_rotations is true, the f_kinematics_processor " "must be provided (ForwardKinematics class)")
 
-            predictions = f_kinematics_processor.compute_fk(
-                self.predictions_aa, return_type=FkReturnType.ROTATIONS
-            )
-            targets = f_kinematics_processor.compute_fk(
-                self.targets_aa, return_type=FkReturnType.ROTATIONS
-            )
+            predictions = f_kinematics_processor.compute_fk(self.predictions_aa, return_type=FkReturnType.ROTATIONS)
+            targets = f_kinematics_processor.compute_fk(self.targets_aa, return_type=FkReturnType.ROTATIONS)
         else:
             # use local rotations
-            predictions = RotConvert.aa2rotmat(self.predictions_aa)
-            targets = RotConvert.aa2rotmat(self.targets_aa)
+            predictions = RotConverter.aa2rotmat(self.predictions_aa)
+            targets = RotConverter.aa2rotmat(self.targets_aa)
 
         predictions_rotmat = np.reshape(predictions, (-1, 3, 3))
         targets_rotmat = np.reshape(targets, (-1, 3, 3))
@@ -190,18 +174,14 @@ class MetricsProcessor:
         # rotation difference represented as rotation matrix: R1 * R2.T
         # due to the reshaping the first dimension (at 0) contains all the dimensions other than the
         # matrices ones; the shape at 1,2 is the 3x3 matrix which need to be transposed
-        rot_diff = np.matmul(
-            predictions_rotmat, np.transpose(targets_rotmat, (0, 2, 1))
-        )
+        rot_diff = np.matmul(predictions_rotmat, np.transpose(targets_rotmat, (0, 2, 1)))
 
         # convert `r` to angle-axis representation and extract the angle, which is our measure of difference between
         # the predicted and target orientations
-        aa_diff = RotConvert.rotmat2aa(rot_diff)
+        aa_diff = RotConverter.rotmat2aa(rot_diff)
         angles = np.linalg.norm(aa_diff, axis=1)
 
-        angles = np.reshape(angles, return_shape)[
-            ..., self.joints_to_compute
-        ]  # (..., n_joints)
+        angles = np.reshape(angles, return_shape)[..., self.joints_to_compute]  # (..., n_joints)
 
         if not single_joint_errors:
             # average over the joints
@@ -245,20 +225,12 @@ class MetricsProcessor:
             f_kinematics_processor.normalize_joints(reference_joint=joint_to_normalize)
 
         # convert angles into positions
-        predictions_pos = f_kinematics_processor.compute_fk(
-            self.predictions_aa, return_type=FkReturnType.POSITIONS
-        )
-        targets_pos = f_kinematics_processor.compute_fk(
-            self.targets_aa, return_type=FkReturnType.POSITIONS
-        )
+        predictions_pos = f_kinematics_processor.compute_fk(self.predictions_aa, return_type=FkReturnType.POSITIONS)
+        targets_pos = f_kinematics_processor.compute_fk(self.targets_aa, return_type=FkReturnType.POSITIONS)
 
         # remove extra dimensions if present
-        predictions_pos = np.reshape(predictions_pos, [-1, n_joints, 3])[
-            :, self.joints_to_compute, :
-        ]
-        targets_pos = np.reshape(targets_pos, [-1, n_joints, 3])[
-            :, self.joints_to_compute, :
-        ]
+        predictions_pos = np.reshape(predictions_pos, [-1, n_joints, 3])[:, self.joints_to_compute, :]
+        targets_pos = np.reshape(targets_pos, [-1, n_joints, 3])[:, self.joints_to_compute, :]
 
         # calculate the euclidean distance between the joint positions
         distances = np.linalg.norm(
@@ -325,9 +297,7 @@ class MetricsPostProcessor:
             errors = np.mean(errors_tensor, axes_to_mean)
         return errors
 
-    def cumulative(
-        self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False
-    ) -> float:
+    def cumulative(self, start_frame: int = 0, end_frame: Optional[int] = None, normalize=False) -> float:
         """
         Compute cumulative error from the start of the sequence.
 
@@ -372,9 +342,7 @@ class MetricsPostProcessor:
         self.__is_valid_frame(at_frame)
         return self.errors[at_frame]
 
-    def windowed_mean(
-        self, at_frame: int, window_len_frames: Optional[int] = None
-    ) -> float:
+    def windowed_mean(self, at_frame: int, window_len_frames: Optional[int] = None) -> float:
         """
         Compute the mean error in a window with the specified number of frames prior to
         the specified frame (included in the window).
@@ -413,10 +381,7 @@ class MetricsPostProcessor:
         """
         num_frames = self.errors.shape[-1]
         if frame not in range(-num_frames, num_frames):
-            raise Exception(
-                f"Provided frame index is not valid: {frame}. "
-                f"Number of frames in errors array: {num_frames}"
-            )
+            raise Exception(f"Provided frame index is not valid: {frame}. " f"Number of frames in errors array: {num_frames}")
         if frame < 0:
             return len(self.errors + frame)
         return frame
@@ -434,6 +399,7 @@ class SpectrumMetricsProcessor:
         remove_zero_freq: bool = True,
         normalize: bool = False,
         joints_to_compute: Optional[Union[list, np.ndarray]] = None,
+        get_zero_freq_percent: bool = False,
     ) -> np.ndarray:
         """
         Compute the power spectral density of the given sequence of joint angles.
@@ -462,47 +428,78 @@ class SpectrumMetricsProcessor:
         seq_len = seq_t.shape[-3]
 
         # keep only the joints to compute
-        seq_t = np.reshape(seq_t, [-1, seq_len, n_joints, feature_size])[
-            :, :, joints_to_compute, :
-        ]
+        seq_t = np.reshape(seq_t, [-1, seq_len, n_joints, feature_size])[:, :, joints_to_compute, :]
         n_joints = seq_t.shape[-2]
 
-        seq_t = np.reshape(
-            seq_t, [-1, seq_len, n_joints * feature_size]
-        )  # (batch, seq_len, n_joints*3)
+        seq_t = np.reshape(seq_t, [-1, seq_len, n_joints * feature_size])  # (batch, seq_len, n_joints*3)
         batch_size = seq_t.shape[0]
 
         # calculate power spectrum
         seq_fft = np.fft.fft(seq_t, axis=1)  # (batch, seq_len, n_joints*3)
 
-        # remove the zero frequency component or divide by 2 due to the symmetry of the fft
-        if remove_zero_freq:
-            seq_fft[:, 0, :] = 0
-        else:
-            seq_fft[:, 0, :] /= 2
+        # divide by 2 the zero frequency component due to the symmetry of the fft
+        seq_fft[:, 0, :] /= 2
 
         # remove the second half of the sequence (due to the symmetry of the fft)
-        seq_fft = seq_fft[:, 0 : seq_len // 2, :]
-
-        seq_ps = np.abs(seq_fft) ** 2  # (batch, seq_len, n_joints*3)
+        seq_fft = seq_fft[:, 0 : seq_len // 2, :]  # (batch, ps_len, n_joints*3)
+        seq_ps = np.abs(seq_fft) ** 2  # (batch, ps_len, n_joints*3)
 
         # scale to obtain the power spectral density
         seq_ps = seq_ps * 2 / (framerate * seq_len)  # (batch, ps_len, n_joints*3)
 
         seq_ps_global = seq_ps.sum(axis=0)  # (ps_len, n_joints*3)
+        seq_ps_global = np.where(seq_ps_global <= 1e-15, 0, seq_ps_global)  # (ps_len, n_joints*3)
+
+        if get_zero_freq_percent:
+            tot_values = seq_ps_global.sum(axis=0)  # (1, n_joints*3)
+            tot_values = np.where(tot_values == 0, 1, tot_values)  # avoid division by 0
+            zero_freq_percentages = seq_ps_global[0] / tot_values * 100  # (1, n_joints*3)
+            zero_freq_percent = np.mean(zero_freq_percentages)  # float
+
+        if remove_zero_freq:
+            seq_ps_global[0, :] = 0  # (ps_len, n_joints*3)
 
         if normalize:
             norm_values = seq_ps_global.sum(axis=0, keepdims=True)  # (1, n_joints*3)
-            norm_values = np.where(
-                norm_values == 0, 1, norm_values
-            )  # avoid division by 0
+            norm_values = np.where(norm_values == 0, 1, norm_values)  # avoid division by 0
             seq_ps_global /= norm_values  # (ps_len, n_joints*3)
         else:
             seq_ps_global /= batch_size  # (ps_len, n_joints*3)
 
-        return np.reshape(
-            seq_ps_global, (-1, n_joints, feature_size)
-        )  # (ps_len, n_joints, 3)
+        if get_zero_freq_percent:
+            return (
+                np.reshape(seq_ps_global, (-1, n_joints, feature_size)),
+                zero_freq_percent,
+            )  # (ps_len, n_joints, 3), zero_freq_percent
+        else:
+            return np.reshape(seq_ps_global, (-1, n_joints, feature_size))  # (ps_len, n_joints, 3)
+
+    @staticmethod
+    def remove_static_joints(seq_ps: np.ndarray) -> (np.ndarray, list):
+        """
+        Remove the joints that are static (zero power spectral density).
+
+        It's returned a tuple (`seq_ps`, `removed_joints`) where 'seq_ps' is the sequence of
+        power spectral density with the static joints removed and 'removed_joints' is the list
+        of the removed joints indexes.
+
+        ---
+        ### Args:
+        - `seq_ps` (ndarray): sequence of power spectral density with shape (ps_len, n_joints, 3)
+        ---
+        ### Returns:
+        The sequence of joint angles with the static joints removed and the list of the removed
+        joints indexes.
+        """
+
+        joints_to_remove = []
+        num_joints = seq_ps.shape[-2]
+        for joint_idx in range(num_joints):
+            if np.sum(seq_ps[:, joint_idx, :]) == 0:
+                joints_to_remove.append(joint_idx)
+        seq_ps = np.delete(seq_ps, joints_to_remove, axis=1)
+
+        return seq_ps, joints_to_remove
 
     @staticmethod
     def ps_entropy(
@@ -517,7 +514,7 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the entropies or all the entropies
         ---
@@ -528,9 +525,7 @@ class SpectrumMetricsProcessor:
             seq = np.array(seq)
 
         if framerate is not None:
-            seq_ps = SpectrumMetricsProcessor.power_spectral_density(
-                seq, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
+            seq_ps = SpectrumMetricsProcessor.power_spectral_density(seq, framerate, normalize=True)  # (ps_len, n_joints, 3)
         else:
             seq_ps = seq  # (ps_len, n_joints, 3)
 
@@ -554,10 +549,10 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq_from` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `seq_to` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the kl divergences or all the divergences
         ---
@@ -570,19 +565,13 @@ class SpectrumMetricsProcessor:
             seq_to = np.array(seq_to)
 
         if framerate is not None:
-            seq_ps_from = SpectrumMetricsProcessor.power_spectral_density(
-                seq_from, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
-            seq_ps_to = SpectrumMetricsProcessor.power_spectral_density(
-                seq_to, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
+            seq_ps_from = SpectrumMetricsProcessor.power_spectral_density(seq_from, framerate, normalize=True)  # (ps_len, n_joints, 3)
+            seq_ps_to = SpectrumMetricsProcessor.power_spectral_density(seq_to, framerate, normalize=True)  # (ps_len, n_joints, 3)
         else:
             seq_ps_from = seq_from  # (ps_len, n_joints, 3)
             seq_ps_to = seq_to  # (ps_len, n_joints, 3)
 
-        kl_divergence = stats.entropy(
-            pk=seq_ps_from, qk=seq_ps_to, base=2, axis=0
-        )  # (n_joints, 3)
+        kl_divergence = stats.entropy(pk=seq_ps_from, qk=seq_ps_to, base=2, axis=0)  # (n_joints, 3)
 
         if get_mean:
             return np.mean(kl_divergence)  # float
@@ -603,10 +592,10 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq_g` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `seq_h` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `get_mean` (bool): whether to return the mean of the js divergences or all the divergences
         ---
@@ -619,21 +608,14 @@ class SpectrumMetricsProcessor:
             seq_h = np.array(seq_h)
 
         if framerate is not None:
-            seq_ps_g = SpectrumMetricsProcessor.power_spectral_density(
-                seq_g, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
-            seq_ps_h = SpectrumMetricsProcessor.power_spectral_density(
-                seq_h, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
+            seq_ps_g = SpectrumMetricsProcessor.power_spectral_density(seq_g, framerate, normalize=True)  # (ps_len, n_joints, 3)
+            seq_ps_h = SpectrumMetricsProcessor.power_spectral_density(seq_h, framerate, normalize=True)  # (ps_len, n_joints, 3)
         else:
             seq_ps_g = seq_g  # (ps_len, n_joints, 3)
             seq_ps_h = seq_h  # (ps_len, n_joints, 3)
 
         smp = SpectrumMetricsProcessor
-        jd_divergence = (
-            smp.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2) / 2
-            + smp.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2) / 2
-        )  # (n_joints, 3)
+        jd_divergence = smp.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2) / 2 + smp.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2) / 2  # (n_joints, 3)
 
         if get_mean:
             return np.mean(jd_divergence)  # float
@@ -655,10 +637,10 @@ class SpectrumMetricsProcessor:
         ### Args:
         - `seq_u` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `seq_v` (list, ndarray): sequence of joint angles in time domain with shape
             (..., seq_len, n_joints, 3) or normalized power spectral density with shape
-            (..., ps_len, n_joints, 3)
+            (ps_len, n_joints, 3)
         - `framerate` (float)(optional): the framerate of the sequence (only if the sequences are in time domain)
         - `time_window_len` (float): the length of the time window in seconds
         - `get_mean` (bool): whether to return the mean of the wasserstein distances or all the
@@ -678,20 +660,14 @@ class SpectrumMetricsProcessor:
         # n_joints = seq_u.shape[-2]
 
         if framerate is not None:
-            seq_ps_u = SpectrumMetricsProcessor.power_spectral_density(
-                seq_u, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
-            seq_ps_v = SpectrumMetricsProcessor.power_spectral_density(
-                seq_v, framerate, normalize=True
-            )  # (ps_len, n_joints, 3)
+            seq_ps_u = SpectrumMetricsProcessor.power_spectral_density(seq_u, framerate, normalize=True)  # (ps_len, n_joints, 3)
+            seq_ps_v = SpectrumMetricsProcessor.power_spectral_density(seq_v, framerate, normalize=True)  # (ps_len, n_joints, 3)
         else:
             seq_ps_u = seq_u  # (ps_len, n_joints, 3)
             seq_ps_v = seq_v  # (ps_len, n_joints, 3)
 
         if seq_ps_u.shape != seq_ps_v.shape:
-            raise Exception(
-                "The power spectrums must have the same shape to compute the wasserstein distance"
-            )
+            raise Exception("The power spectrums must have the same shape to compute the wasserstein distance")
 
         # # Implementation of the Wasserstein distance using scipy.stats.wasserstein_distance with a trick
         # ps_len = seq_ps_u.shape[0]
@@ -711,9 +687,7 @@ class SpectrumMetricsProcessor:
         seq_ps_v = np.cumsum(seq_ps_v, axis=0)  # (ps_len, n_joints, 3)
 
         # Compute the Wasserstein distance
-        w_distance = np.sum(
-            np.abs(seq_ps_u - seq_ps_v) / time_window_len, axis=0
-        )  # (n_joints, 3)
+        w_distance = np.sum(np.abs(seq_ps_u - seq_ps_v) / time_window_len, axis=0)  # (n_joints, 3)
 
         if get_mean:
             return np.mean(w_distance)  # float

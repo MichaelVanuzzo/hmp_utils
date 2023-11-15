@@ -1,7 +1,7 @@
 import numpy as np
 from enum import Enum, auto
 from typing import Optional, Union
-from .. import RotConvert, BodyModelType
+from .. import RotConverter, BodyModelType
 
 
 class FkReturnType(Enum):
@@ -47,9 +47,7 @@ class ForwardKinematics:
             self.parents = parents
 
         if len(self.body_link_offsets) != len(self.parents):
-            raise Exception(
-                "Length of keypoint offsets should have same length of keypoint parents list"
-            )
+            raise Exception("Length of keypoint offsets should have same length of keypoint parents list")
 
         self.num_keypoints = len(offsets)
         self.offsets_are_relative = offsets_are_relative
@@ -64,9 +62,7 @@ class ForwardKinematics:
         """
         if self.offsets_are_relative:
             raise Exception("Offsets are already relative")
-        self.body_link_offsets[1:] = (
-            self.body_link_offsets[1:] - self.body_link_offsets[self.parents[1:]]
-        )
+        self.body_link_offsets[1:] = self.body_link_offsets[1:] - self.body_link_offsets[self.parents[1:]]
         self.offsets_are_relative = True
 
     def set_body_model_type(self, model_type: BodyModelType) -> None:
@@ -113,7 +109,7 @@ class ForwardKinematics:
 
         ---
         ### Args:
-        - `joint_rots` (ndarray): relative joint rotations in angle-axis representation with shape (batch, num_joints, 3).
+        - `joint_rots` (ndarray): relative joint rotations in angle-axis representation with shape (..., num_joints, 3).
             The number of joints must be equal to the total number of keypoints which position needs to be computed.
         - `apply_root_rotation` (bool): if set to True, the root joint will rotate with respect to world
         - `root_translation` (np.ndarray)(optional): if root_translation is used, the keypoint positions are translated by
@@ -125,10 +121,7 @@ class ForwardKinematics:
         A numpy array containing the computed keypoint positions or rotations matrices.
         """
         if None in [self.offsets_are_relative, self.left_mul]:
-            raise Exception(
-                'Please indicate both values for "offsets are relative" and '
-                'whether "left multiplication" should be performed'
-            )
+            raise Exception('Please indicate both values for "offsets are relative" and ' 'whether "left multiplication" should be performed')
 
         orig_shape = joint_rots.shape
         batch_shape = orig_shape[:-2]
@@ -145,7 +138,7 @@ class ForwardKinematics:
             raise NotImplementedError
 
         # convert angle-axis notations to rotation matrices
-        joint_rotmat = RotConvert.aa2rotmat(joint_rots)
+        joint_rotmat = RotConverter.aa2rotmat(joint_rots)
         # forward kinematic is performed on the set of keypoints
         joint_rotmat = np.reshape(joint_rotmat, (-1, self.num_keypoints, 3, 3))
 
@@ -155,9 +148,7 @@ class ForwardKinematics:
         # create transformation matrices 4x4: [[R, t], [[0,0,0], [1]]]
         # where R is the rotation matrix 3x3 ad t is the offset vector 3x1
         # shape: (N, num_keypoints, 4, 4)
-        relative_transf_mat = np.full(
-            shape=(*joint_rotmat.shape[:-2], 4, 4), fill_value=np.eye(4)
-        )
+        relative_transf_mat = np.full(shape=(*joint_rotmat.shape[:-2], 4, 4), fill_value=np.eye(4))
         # translation vectors: relative link offsets
         relative_transf_mat[:, :, :3, 3] = self.body_link_offsets
         # rotation matrices
@@ -178,31 +169,21 @@ class ForwardKinematics:
             # Compute the world transformation matrix for the current keypoint
             if self.left_mul:
                 # for Human3.6M
-                relative_offset = np.expand_dims(
-                    relative_transf_mat[:, keypoint_idx, :3, 3], axis=1
-                )
+                relative_offset = np.expand_dims(relative_transf_mat[:, keypoint_idx, :3, 3], axis=1)
                 relative_rotmat = relative_transf_mat[:, keypoint_idx, :3, :3]
                 parent_position = np.expand_dims(parent_transform[:, :3, 3], axis=1)
                 parent_rotmat = parent_transform[:, :3, :3]
 
                 # global position of this keypoint
-                keypoint_global_position = (
-                    np.matmul(relative_offset, parent_rotmat) + parent_position
-                )
+                keypoint_global_position = np.matmul(relative_offset, parent_rotmat) + parent_position
                 keypoint_global_rotmat = np.matmul(relative_rotmat, parent_rotmat)
 
-                keypont_global_transf_mat = np.full(
-                    shape=(frames_num, 4, 4), fill_value=np.eye(4)
-                )
+                keypont_global_transf_mat = np.full(shape=(frames_num, 4, 4), fill_value=np.eye(4))
                 keypont_global_transf_mat[:, :3, :3] = keypoint_global_rotmat
-                keypont_global_transf_mat[:, :3, 3] = np.reshape(
-                    keypoint_global_position, (frames_num, 3)
-                )
+                keypont_global_transf_mat[:, :3, 3] = np.reshape(keypoint_global_position, (frames_num, 3))
             else:
                 # for SMPL
-                keypont_global_transf_mat = np.matmul(
-                    parent_transform, relative_transf_mat[:, keypoint_idx]
-                )
+                keypont_global_transf_mat = np.matmul(parent_transform, relative_transf_mat[:, keypoint_idx])
 
             # Store the world transformation matrix of the current joint
             global_transf_mat[:, keypoint_idx] = keypont_global_transf_mat

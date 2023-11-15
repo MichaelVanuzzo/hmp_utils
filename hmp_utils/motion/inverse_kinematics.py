@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Union as U
 from typing import Optional as O
-from hmp_utils import RotConvert
+from hmp_utils import RotConverter
 from hmp_utils import SmplConstants, H36MConstants, BodyConstants
 
 
@@ -72,9 +72,7 @@ class IK:
         offsets = offsets or body_constants.OFFSETS
         keypoints = keypoints or body_constants.KEYPOINTS
         joints_to_ignore = joints_to_ignore or body_constants.JOINTS_TO_IGNORE
-        offsets_are_relative = (
-            offsets_are_relative or body_constants.OFFSETS_ARE_RELATIVE
-        )
+        offsets_are_relative = offsets_are_relative or body_constants.OFFSETS_ARE_RELATIVE
         left_mul = left_mul or body_constants.LEFT_MUL
 
         if body_constants == None:
@@ -87,9 +85,7 @@ class IK:
                 offsets_are_relative,
                 left_mul,
             ]:
-                raise Exception(
-                    f"Please specify a body model type or all the other parameters"
-                )
+                raise Exception(f"Please specify a body model type or all the other parameters")
         elif body_constants not in [H36MConstants, SmplConstants]:
             raise Exception(f"Body constants type not supported")
 
@@ -176,7 +172,7 @@ class IK:
             aa[:, joint] = axis * angle
 
             # save cumulative rotation up to the joint
-            rot_mat_temp = RotConvert.aa2rotmat(aa[:, joint])
+            rot_mat_temp = RotConverter.aa2rotmat(aa[:, joint])
             if left_mul:
                 rot_mat[:, joint] = np.matmul(rot_mat_temp, rot_mat[:, parent_joint])
             else:

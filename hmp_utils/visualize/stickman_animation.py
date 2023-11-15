@@ -36,9 +36,7 @@ def pose_animation(
     subplot_titles: Optional["list[str]"] = None,
     subplot_ids: Optional[list] = None,
     subplot_colors: Optional[list] = None,
-    camera_orientations: Optional[
-        Union[CameraOrientation, "list[CameraOrientation]"]
-    ] = None,
+    camera_orientations: Optional[Union[CameraOrientation, "list[CameraOrientation]"]] = None,
     show_grid: bool = False,
     show_keypoint_id: bool = False,
     fig_opts: Optional[dict] = None,
@@ -94,8 +92,7 @@ def pose_animation(
         camera_orientations = [camera_orientations for _ in subplot_ids]
     if len(camera_orientations) < num_subplots:
         raise Exception(
-            "Please provide a single camera orientation, or provide as many "
-            f"camera orientations as there are subplots. Num subplots: {num_subplots}"
+            "Please provide a single camera orientation, or provide as many " f"camera orientations as there are subplots. Num subplots: {num_subplots}"
         )
 
     # find minimum duration of motions, that is where to stop the animation
@@ -112,9 +109,7 @@ def pose_animation(
     camera_range = [camera_range[0] - image_margins, camera_range[1] + image_margins]
 
     # create figure
-    fig, axes = plt.subplots(
-        1, num_subplots, subplot_kw={"projection": "3d"}, **fig_opts
-    )
+    fig, axes = plt.subplots(1, num_subplots, subplot_kw={"projection": "3d"}, **fig_opts)
     # white figure background
     fig.set_facecolor("white")
 
@@ -127,9 +122,7 @@ def pose_animation(
     # this is text to display other information during the animation
     subplot_info_text_lst = []
     for ax in axes:
-        subplot_info_text_lst.append(
-            ax.text2D(0.05, 0.05, "", transform=ax.transAxes, ha="left", va="bottom")
-        )
+        subplot_info_text_lst.append(ax.text2D(0.05, 0.05, "", transform=ax.transAxes, ha="left", va="bottom"))
 
     # -- DEFINE LINES TO BE PLOTTED --
     # For efficiency, the lines are plotted one time and then updated during the animation
@@ -185,17 +178,13 @@ def pose_animation(
         function to update the figure for each frame of the animation
         """
         for mocap_id, mocap_positions in enumerate(mocap_list):
-            subplot_info_text_lst[subplot_ids[mocap_id]].set_text(
-                f"frame: {frame+1}/{len(mocap_positions)} | time: {(frame+1)/animation_framerate:.2f} s"
-            )
+            subplot_info_text_lst[subplot_ids[mocap_id]].set_text(f"frame: {frame+1}/{len(mocap_positions)} | time: {(frame+1)/animation_framerate:.2f} s")
             keypoint_positions = mocap_positions[frame]
 
             # Plot the points
             for i, point in enumerate(keypoint_positions):
                 if show_keypoint_id:
-                    plot_keypoint[mocap_id][i].set_position(
-                        (point[0], point[1], point[2])
-                    )
+                    plot_keypoint[mocap_id][i].set_position((point[0], point[1], point[2]))
 
                 parent = parents[i]
                 parent_point = keypoint_positions[parent]
@@ -203,9 +192,7 @@ def pose_animation(
                 # if it has a parent (not itself and not -1), connect it with a line
                 if parent != -1:
                     line = plot_lines[mocap_id][i]
-                    line.set_data(
-                        [point[0], parent_point[0]], [point[1], parent_point[1]]
-                    )
+                    line.set_data([point[0], parent_point[0]], [point[1], parent_point[1]])
                     line.set_3d_properties([point[2], parent_point[2]])
 
     # apply plot options to each axis
@@ -219,9 +206,7 @@ def pose_animation(
         ax.axes.set_ylim3d(bottom=camera_range[0], top=camera_range[1])
         ax.axes.set_zlim3d(bottom=camera_range[0], top=camera_range[1])
 
-    ani = FuncAnimation(
-        fig, update, frames=min_len_frames, interval=1000 / animation_framerate
-    )
+    ani = FuncAnimation(fig, update, frames=min_len_frames, interval=1000 / animation_framerate)
 
     # save animation as gif
     if gif_savepath:

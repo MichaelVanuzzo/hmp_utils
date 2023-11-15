@@ -7,14 +7,14 @@ from enum import Enum, auto
 from typing import Optional, Union
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation
-from hmp_utils import RotConvert
+from hmp_utils import RotConverter
 from .. import BodyModelType, SmplConstants, H36MConstants
 
 
 class DownsampleMethod(Enum):
     RESAMPLE = auto()
     DECIMATE = auto()
-    SLERP = auto()
+    SLERP = auto()  # not applicable to translation and don't have anti-aliasing
     NONE = auto()
 
 
@@ -51,7 +51,7 @@ def downsample_motion(
     source_array: Union[np.ndarray, list],
     source_framerate: float,
     target_framerate: float,
-    method: DownsampleMethod = DownsampleMethod.SLERP,
+    method: DownsampleMethod = DownsampleMethod.RESAMPLE,
 ) -> Union[np.ndarray, None]:
     """
     Downsamples the given array to a target framerate using the specified method
@@ -77,9 +77,7 @@ def downsample_motion(
         try:
             downsampling_factor = int(round(source_framerate / target_framerate))
             original_len = int(np.floor(source_array.shape[0] / downsampling_factor))
-            downsampled_array = signal.decimate(
-                source_array, downsampling_factor, zero_phase=True, axis=0
-            )[:original_len]
+            downsampled_array = signal.decimate(source_array, downsampling_factor, zero_phase=True, axis=0)[:original_len]
             return np.array(downsampled_array)
         except ValueError:
             # "The length of the input vector x must be greater than padlen"
@@ -88,13 +86,9 @@ def downsample_motion(
 
     elif method == DownsampleMethod.RESAMPLE:
         source_num_frames = source_array.shape[0]
-        downsampled_len_frames = int(
-            source_num_frames * target_framerate / source_framerate
-        )
+        downsampled_len_frames = int(source_num_frames * target_framerate / source_framerate)
 
-        downsampled_array = signal.resample_poly(
-            source_array, downsampled_len_frames, source_num_frames
-        )
+        downsampled_array = signal.resample_poly(source_array, downsampled_len_frames, source_num_frames)
         return np.array(downsampled_array)
 
     elif method == DownsampleMethod.SLERP:
@@ -112,9 +106,7 @@ def downsample_motion(
         original_len_sec = original_len_frames / source_framerate
         original_key_times = np.arange(original_len_frames) / source_framerate
 
-        target_key_times = np.arange(
-            start=0, stop=original_len_sec, step=1 / target_framerate
-        )
+        target_key_times = np.arange(start=0, stop=original_len_sec, step=1 / target_framerate)
         # remove the last frame if it exceeds the time of the last frame in the key times
         target_key_times = target_key_times[target_key_times < original_key_times[-1]]
 
@@ -150,7 +142,7 @@ class MocapLoader:
         body_model_type: BodyModelType,
         keypoint_ids_to_load: Union[list, np.ndarray],
         target_framerate: Optional[float] = None,
-        downsampling_method: DownsampleMethod = DownsampleMethod.SLERP,
+        downsampling_method: DownsampleMethod = DownsampleMethod.RESAMPLE,
         downsampling_tolerance=1e-3,
     ) -> None:
         """
@@ -176,9 +168,7 @@ class MocapLoader:
             if target_framerate > 0:
                 self.target_framerate = target_framerate
             else:
-                raise Exception(
-                    f"Provide a valid downsampling framerate (was given {target_framerate})"
-                )
+                raise Exception(f"Provide a valid downsampling framerate (was given {target_framerate})")
 
         self.downsampling_method = downsampling_method
         self.downsampling_tolerance = downsampling_tolerance
@@ -250,10 +240,7 @@ class MocapLoader:
             return None
 
         framerate_difference = abs(original_framerate - target_framerate)
-        if (
-            original_framerate < target_framerate
-            and framerate_difference > self.downsampling_tolerance
-        ):
+        if original_framerate < target_framerate and framerate_difference > self.downsampling_tolerance:
             raise Exception(
                 f"Mocap sequence could not be loaded because target framerate {target_framerate} "
                 f"is higher than the mocap framerate {original_framerate} \n"
@@ -279,27 +266,18 @@ class MocapLoader:
             )
 
         # downsample to the target framerate
-        if (
-            self.downsampling_method == DownsampleMethod.DECIMATE
-            and not self.__can_decimate(original_framerate, target_framerate)
-        ):
-            downsample_method = DownsampleMethod.SLERP
+        if self.downsampling_method == DownsampleMethod.DECIMATE and not self.__can_decimate(original_framerate, target_framerate):
+            downsample_method = DownsampleMethod.RESAMPLE
         else:
             downsample_method = self.downsampling_method
 
-        rot_trajectory = downsample_motion(
-            rot_trajectory, original_framerate, target_framerate, downsample_method
-        )
-        trans_trajectory = downsample_motion(
-            trans_trajectory, original_framerate, target_framerate, downsample_method
-        )
+        rot_trajectory = downsample_motion(rot_trajectory, original_framerate, target_framerate, downsample_method)
+        trans_trajectory = downsample_motion(trans_trajectory, original_framerate, target_framerate, downsample_method)
 
         if rot_trajectory is None or trans_trajectory is None:
             return None
 
-        downsampled_framerate = (
-            original_framerate * len(trans_trajectory) / original_num_frames
-        )
+        downsampled_framerate = original_framerate * len(trans_trajectory) / original_num_frames
 
         return MocapData(
             rot_trajectory,
@@ -328,12 +306,8 @@ class MocapLoader:
 
         smpl_keys = ["poses", "trans", "gender"]
         smpl_framerate_keys = ["mocap_frame_rate", "mocap_framerate"]
-        if any(key not in data.files for key in smpl_keys) or all(
-            key not in data.files for key in smpl_framerate_keys
-        ):
-            raise Exception(
-                f"KeyError: {smpl_keys} smpl key was not found in mocap {file_path}"
-            )
+        if any(key not in data.files for key in smpl_keys) or all(key not in data.files for key in smpl_framerate_keys):
+            raise Exception(f"KeyError: {smpl_keys} smpl key was not found in mocap {file_path}")
 
         if self.target_framerate is None:
             if "mocap_frame_rate" in data.files:
@@ -359,10 +333,7 @@ class MocapLoader:
             return None
 
         framerate_difference = abs(original_framerate - target_framerate)
-        if (
-            original_framerate < target_framerate
-            and framerate_difference > self.downsampling_tolerance
-        ):
+        if original_framerate < target_framerate and framerate_difference > self.downsampling_tolerance:
             raise Exception(
                 f"Mocap sequence could not be loaded because target framerate {target_framerate} "
                 f"is higher than the mocap framerate {original_framerate} \n"
@@ -388,27 +359,18 @@ class MocapLoader:
             )
 
         # downsample to the target framerate
-        if (
-            self.downsampling_method == DownsampleMethod.DECIMATE
-            and not self.__can_decimate(original_framerate, target_framerate)
-        ):
-            downsample_method = DownsampleMethod.SLERP
+        if self.downsampling_method == DownsampleMethod.DECIMATE and not self.__can_decimate(original_framerate, target_framerate):
+            downsample_method = DownsampleMethod.RESAMPLE
         else:
             downsample_method = self.downsampling_method
 
-        rot_trajectory = downsample_motion(
-            rot_trajectory, original_framerate, target_framerate, downsample_method
-        )
-        trans_trajectory = downsample_motion(
-            trans_trajectory, original_framerate, target_framerate, downsample_method
-        )
+        rot_trajectory = downsample_motion(rot_trajectory, original_framerate, target_framerate, downsample_method)
+        trans_trajectory = downsample_motion(trans_trajectory, original_framerate, target_framerate, downsample_method)
 
         if rot_trajectory is None or trans_trajectory is None:
             return None
 
-        downsampled_framerate = (
-            original_framerate * len(trans_trajectory) / original_num_frames
-        )
+        downsampled_framerate = original_framerate * len(trans_trajectory) / original_num_frames
 
         return MocapData(
             rot_trajectory,
@@ -419,7 +381,7 @@ class MocapLoader:
         )
 
 
-class Amass2HumanConvert:
+class Amass2HumanConverter:
     """
     Class to convert an amass mocap to the human3.6m format.
 
@@ -472,10 +434,7 @@ class Amass2HumanConvert:
 
         # amass relative offsets
         amass_relative_offsets = np.reshape(np.array(SmplConstants.OFFSETS), (-1, 3))
-        amass_relative_offsets[1:] = (
-            amass_absolute_offsets[1:]
-            - amass_absolute_offsets[SmplConstants.PARENTS[1:]]
-        )
+        amass_relative_offsets[1:] = amass_absolute_offsets[1:] - amass_absolute_offsets[SmplConstants.PARENTS[1:]]
 
         # human relative offsets
         H36MRelativeOffsets = np.reshape(np.array(H36MConstants.OFFSETS), (-1, 3))
@@ -505,32 +464,22 @@ class Amass2HumanConvert:
                 )
 
                 # compute aligning rotmat
-                amass_link = amass_relative_offsets[
-                    self.human2amass_keypoints[keypoint_child]
-                ]
+                amass_link = amass_relative_offsets[self.human2amass_keypoints[keypoint_child]]
                 human_link = human_relative_offsets[keypoint_child]
 
                 # if human link 12, align the spine with amass link 0-6
                 if keypoint == 12:  # Spine1
-                    amass_link = (
-                        amass_absolute_offsets[6] - amass_absolute_offsets[0]
-                    )  # spine2 - pelvis
+                    amass_link = amass_absolute_offsets[6] - amass_absolute_offsets[0]  # spine2 - pelvis
 
-                aligning_rotmats[keypoint] = self.rotation_matrix_from_vectors(
-                    human_link, amass_link
-                )
+                aligning_rotmats[keypoint] = self.rotation_matrix_from_vectors(human_link, amass_link)
 
                 # update rotations chain
-                rotations_chain[keypoint] = np.matmul(
-                    aligning_rotmats[keypoint], rotations_chain[keypoint_parent]
-                )
+                rotations_chain[keypoint] = np.matmul(aligning_rotmats[keypoint], rotations_chain[keypoint_parent])
 
         return aligning_rotmats
 
     @staticmethod
-    def rotation_matrix_from_vectors(
-        vec1: Union[list, np.ndarray], vec2: Union[list, np.ndarray]
-    ) -> np.ndarray:
+    def rotation_matrix_from_vectors(vec1: Union[list, np.ndarray], vec2: Union[list, np.ndarray]) -> np.ndarray:
         """
         Compute the rotation matrix to align vec1 to vec2.
 
@@ -562,10 +511,7 @@ class Amass2HumanConvert:
 
         # Compute rotation matrix
         rotation_matrix = (
-            np.eye(3)
-            + skew_symmetric_matrix
-            + skew_symmetric_matrix.dot(skew_symmetric_matrix)
-            * ((1 - dot_product) / (np.linalg.norm(cross_product) ** 2))
+            np.eye(3) + skew_symmetric_matrix + skew_symmetric_matrix.dot(skew_symmetric_matrix) * ((1 - dot_product) / (np.linalg.norm(cross_product) ** 2))
         )
         return rotation_matrix
 
@@ -592,13 +538,13 @@ class Amass2HumanConvert:
             amass_trans = np.zeros((num_frames, 1, 3))
 
         human_rots = np.zeros((num_frames, num_joints, 3))
-        amass_rotmat = RotConvert.aa2rotmat(amass_rots)
+        amass_rotmat = RotConverter.aa2rotmat(amass_rots)
 
         for keypoint in range(1, num_joints):  # TODO: and keypoint 0???
             if keypoint in self.human_keypoint_to_skip:
                 pass
             else:
-                human_rots[:, keypoint] = -RotConvert.rotmat2aa(
+                human_rots[:, keypoint] = -RotConverter.rotmat2aa(
                     np.matmul(
                         amass_rotmat[:, self.human2amass_keypoints[keypoint]],
                         self.aligning_rotmats[keypoint],
@@ -617,7 +563,7 @@ class Amass2HumanConvert:
 
 
 def save_h36m_mocap_np2txt(
-    rots: np.ndarray,
+    mocap: np.ndarray,
     dir_path: str,
     filename: str,
     trans: Optional[np.ndarray] = None,
@@ -627,17 +573,17 @@ def save_h36m_mocap_np2txt(
 
     ---
     ### Args:
-    - `rots` (np.ndarray): rotations of joints in angle-axis representation with shape (num_frames, num_joints, 3)
+    - `mocap` (np.ndarray): translation(optional) + rotations of joints in angle-axis representation with shape (num_frames, num_joints, 3)
     - `dir_path` (str): path of the saved file
     - `filename` (str): name of the saved file (without ".txt")
     - `trans` (np.ndarray)(optional): translation of root joint (num_frames, 1, 3)
     """
 
-    original_shape = rots.shape
+    original_shape = mocap.shape
 
-    rots = np.reshape(rots, (-1, *original_shape[-2:]))  # (num_frame,joints,3)
-    num_frames = rots.shape[0]
-    num_joints = rots.shape[1]
+    mocap = np.reshape(mocap, (-1, *original_shape[-2:]))  # (num_frame,joints,3)
+    num_frames = mocap.shape[0]
+    num_joints = mocap.shape[1]
     assert num_joints in [32, 33]
 
     # add root position if it's missing in the mocap
@@ -646,7 +592,7 @@ def save_h36m_mocap_np2txt(
             trans = np.zeros([num_frames, 1, 3])
         else:
             trans = np.reshape(trans, (-1, 1, 3))
-        mocap = np.concatenate([trans, rots], axis=1)
+        mocap = np.concatenate([trans, mocap], axis=1)
 
     mocap_txt = np.reshape(mocap, [-1, 99])  # (num_frame,99)
 

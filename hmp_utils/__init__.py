@@ -1,5 +1,6 @@
-from .common.rot_convert import RotConvert
-from .common.table import Table
+from .common.os_utils import mkdir_if_missing
+from .common.pandas_utils import TableManager
+from .common.rot_converter import RotConverter
 
 from .motion.body_models_constants import (
     BodyModelType,
@@ -12,7 +13,7 @@ from .motion.inverse_kinematics import IK
 from .motion.mocap_processor import (
     MocapData,
     MocapLoader,
-    Amass2HumanConvert,
+    Amass2HumanConverter,
     save_h36m_mocap_np2txt,
 )
 
@@ -23,8 +24,16 @@ from .metrics.body_pose_metrics import (
 )
 from .metrics.evaluation_utils import (
     AMASS_SEQ_LEN,
+    SPECTRUM_EVALUATION_SEQ_LEN,
+    EVALUATION_TIMESTAMPS_25FPS,
+    EVALUATION_WINDOW_LEN_25FPS,
+    EVALUATION_TIMESTAMPS_60FPS,
+    EVALUATION_WINDOW_LEN_60FPS,
+    EVALUATION_WINDOW_LEN_DICT,
+    EVALUATION_T_DICT,
     SrnnEvaluationFrames,
     AmassEvaluationFrames,
+    EvaluationProtocol,
 )
 from .metrics.split_amass_dataset import (
     AMASS_DATASETS,
@@ -32,6 +41,8 @@ from .metrics.split_amass_dataset import (
     load_sets_by_dataset_dict,
     print_amass_sets_info,
 )
+
+from .metrics.split_amass_by_clustering import split_amass_by_clustering
 
 from .visualize.static_3d_plot import (
     plot_body_keypoints,
@@ -44,3 +55,5 @@ from .visualize.stickman_animation import (
 )
 
 from .common.custom_logger import custom_logger
+
+from .deprecated.table import Table
