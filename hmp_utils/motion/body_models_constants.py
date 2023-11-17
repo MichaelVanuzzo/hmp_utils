@@ -271,6 +271,7 @@ class SmplConstants(BodyConstants):
 
     # The offsets are vectors that map the position of body joints when the body is in the
     # T-pose standard SMPL pose, relative to the origin [0,0,0] #TODO: check
+    # The i-th offset is the distance between the i-th joint and its parent
     OFFSETS_BY_GENDER = {
         "neutral": [
             [-1.79505953e-03, -2.23333446e-01, 2.82191255e-02],
