@@ -361,7 +361,7 @@ class EvaluationProtocol:
                 power_spectral_density_files = H36M_PSD
             else:
                 power_spectral_density_files = AMASS2H36M_PSD
-        elif body_model_type == BodyModelType.AMASS:
+        elif body_model_type == BodyModelType.SMPL:
             power_spectral_density_files = AMASS_PSD_BY_FRAMERATE[framerate]
         power_spectral_density_dict = {}
         removed_joints_dict = {}
@@ -399,7 +399,9 @@ class EvaluationProtocol:
         ### Returns:
         - `error_list` (list): list of wasserstein distance.
         """
-        power_spectral_density_dict, removed_joints_dict = EvaluationProtocol.load_power_spectral_density_dict(bodyConstants.BODY_MODEL_TYPE, framerate, is_amass2h36m)
+        power_spectral_density_dict, removed_joints_dict = EvaluationProtocol.load_power_spectral_density_dict(
+            bodyConstants.BODY_MODEL_TYPE, framerate, is_amass2h36m
+        )
 
         pos_predictions = fk_processor.compute_fk(predictions, apply_root_rotation=False)  # (batch, seq_len, num_joints, 3)
         error_list = []
