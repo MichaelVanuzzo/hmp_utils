@@ -17,6 +17,7 @@ class BodyConstants:
     # END_EFFECTORS: "list[int]"
     MAJOR_JOINTS: "list[int]"
     JOINTS_TO_IGNORE: "list[int]"
+    JOINT_TO_NORMALIZE: int
     JOINT_NAMES: "list[int, str]"
     OFFSETS: list
     OFFSETS_ARE_RELATIVE: bool
@@ -120,6 +121,9 @@ class SmplConstants(BodyConstants):
 
     # Subset of keypoints that are not used in metrics
     JOINTS_TO_IGNORE = [10, 11, 22, 23]
+
+    # Joint to put equal to one meter in the normalization process
+    JOINT_TO_NORMALIZE = 4
 
     # From https://github.com/Meshcapade/wiki/blob/main/wiki/SMPL.md
     SMPLX_JOINT_NAMES = {
@@ -484,6 +488,9 @@ class H36MConstants(BodyConstants):
         30,
         31,
     ]
+
+    # Joint to put equal to one meter in the normalization process
+    JOINT_TO_NORMALIZE = 7
 
     # From https://github.com/wei-mao-2019/HisRepItself/blob/master/utils/h36motion3d.py#L42
     JOINT_NAMES_ = {
