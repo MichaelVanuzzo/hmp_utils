@@ -77,7 +77,7 @@ def downsample_motion(
         try:
             downsampling_factor = int(round(source_framerate / target_framerate))
             original_len = int(np.floor(source_array.shape[0] / downsampling_factor))
-            downsampled_array = signal.decimate(source_array, downsampling_factor, zero_phase=True, axis=0)[:original_len]
+            downsampled_array = signal.decimate(source_array, downsampling_factor, zero_phase=True, axis=0)
             return np.array(downsampled_array)
         except ValueError:
             # "The length of the input vector x must be greater than padlen"
@@ -85,10 +85,8 @@ def downsample_motion(
             return None
 
     elif method == DownsampleMethod.RESAMPLE:
-        source_num_frames = source_array.shape[0]
-        downsampled_len_frames = int(source_num_frames * target_framerate / source_framerate)
-
-        downsampled_array = signal.resample_poly(source_array, downsampled_len_frames, source_num_frames)
+        downsampling_factor = source_framerate / target_framerate
+        downsampled_array = signal.resample_poly(source_array, up=target_framerate, down=source_framerate)
         return np.array(downsampled_array)
 
     elif method == DownsampleMethod.SLERP:
@@ -103,12 +101,10 @@ def downsample_motion(
         original_shape = source_array.shape
         original_len_frames = original_shape[0]
         # this is not the actual duration of the sequence, but the last frame sample time
-        original_len_sec = original_len_frames / source_framerate
+        original_len_sec = (original_len_frames - 1) / source_framerate
         original_key_times = np.arange(original_len_frames) / source_framerate
 
-        target_key_times = np.arange(start=0, stop=original_len_sec, step=1 / target_framerate)
-        # remove the last frame if it exceeds the time of the last frame in the key times
-        target_key_times = target_key_times[target_key_times < original_key_times[-1]]
+        target_key_times = np.arange(start=0, stop=original_len_sec + 1e-15, step=1 / target_framerate)
 
         # the shape is (num_frames, ..., 3) but we need (..., num_frames, 3)
         source_array = np.swapaxes(source_array, 0, -2)
@@ -277,7 +273,10 @@ class MocapLoader:
         if rot_trajectory is None or trans_trajectory is None:
             return None
 
-        downsampled_framerate = original_framerate * len(trans_trajectory) / original_num_frames
+        if len(trans_trajectory) == int(np.ceil(original_num_frames * target_framerate / original_framerate)):
+            downsampled_framerate = target_framerate
+        else:
+            raise Exception("Downsampled mocap has a different length than expected")
 
         return MocapData(
             rot_trajectory,
@@ -370,7 +369,10 @@ class MocapLoader:
         if rot_trajectory is None or trans_trajectory is None:
             return None
 
-        downsampled_framerate = original_framerate * len(trans_trajectory) / original_num_frames
+        if len(trans_trajectory) == int(np.ceil(original_num_frames * target_framerate / original_framerate)):
+            downsampled_framerate = target_framerate
+        else:
+            raise Exception("Downsampled mocap has a different length than expected")
 
         return MocapData(
             rot_trajectory,
