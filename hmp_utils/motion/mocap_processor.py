@@ -7,7 +7,7 @@ from enum import Enum, auto
 from typing import Optional, Union
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation
-from hmp_utils import RotConverter
+from .. import RotConverter
 from .. import BodyModelType, SmplConstants, H36MConstants
 
 

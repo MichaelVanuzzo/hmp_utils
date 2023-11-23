@@ -10,9 +10,8 @@ class BodyConstants:
     """General body constants class"""
 
     NUM_KEYPOINTS: int
-    KEYPOINTS: "list[int]"  # TODO: remove this, it's pointless
+    KEYPOINTS: "list[int]"
     PARENTS: "list[int, int]"
-    CHILDS: "list[int, int]"  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
     # JOINTS = "list[int]"
     # END_EFFECTORS: "list[int]"
     MAJOR_JOINTS: "list[int]"
@@ -29,7 +28,7 @@ class SmplConstants(BodyConstants):
     # ---------------SMPL---------------
     # Keypoints are all the joints and end effectors combined
     NUM_KEYPOINTS = 24
-    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]  # TODO: remove this, it's pointless
+    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]
 
     # Parents of all SMPL keypoints
     # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L33
@@ -60,35 +59,6 @@ class SmplConstants(BodyConstants):
         23: 21,
     }
     PARENTS = list(PARENTS_.values())
-
-    # Used to find the child of a joint, -1 if there is no child and for the root
-    CHILDS_ = {
-        0: -1,
-        1: 4,
-        2: 5,
-        3: 6,
-        4: 7,
-        5: 8,
-        6: 9,
-        7: 10,
-        8: 11,
-        9: 12,
-        10: -1,
-        11: -1,
-        12: 15,
-        13: 16,
-        14: 17,
-        15: -1,
-        16: 18,
-        17: 19,
-        18: 20,
-        19: 21,
-        20: 22,
-        21: 23,
-        22: -1,
-        23: -1,
-    }  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
-    CHILDS = list(CHILDS_.values())
 
     # Keypoints called joints are those which perform rotation relative to their parent
     # JOINTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
@@ -270,8 +240,7 @@ class SmplConstants(BodyConstants):
     JOINT_NAMES = list(JOINT_NAMES_.values())
 
     # The offsets are vectors that map the position of body joints when the body is in the
-    # T-pose standard SMPL pose, relative to the origin [0,0,0] #TODO: check
-    # The i-th offset is the distance between the i-th joint and its parent
+    # T-pose standard SMPL pose, relative to the origin [0,0,0]
     OFFSETS_BY_GENDER = {
         "neutral": [
             [-1.79505953e-03, -2.23333446e-01, 2.82191255e-02],
@@ -368,7 +337,7 @@ class H36MConstants(BodyConstants):
     # --------------Human3.6M---------------
     # Keypoints are all the joints and end effectors combined
     NUM_KEYPOINTS = 32
-    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]  # TODO: remove this, it's pointless
+    KEYPOINTS = [i for i in range(NUM_KEYPOINTS)]
 
     # Parents of all Human3.6M keypoints
     # From https://github.com/eth-ait/spl/blob/6b37cc0a61c69b6e43187800d6589eb9cfaa9799/visualization/fk.py#L28
@@ -407,43 +376,6 @@ class H36MConstants(BodyConstants):
         31: 30,
     }
     PARENTS = list(PARENTS_.values())
-
-    # Used to find the child of a joint, -1 if there is no child and for the root
-    CHILDS_ = {
-        0: -1,
-        1: 2,
-        2: 3,
-        3: 4,
-        4: 5,
-        5: -1,
-        6: 7,
-        7: 8,
-        8: 9,
-        9: 10,
-        10: -1,
-        11: 12,
-        12: 13,
-        13: 14,
-        14: 15,
-        15: -1,
-        16: 17,
-        17: 18,
-        18: 19,
-        19: 22,
-        20: -1,
-        21: -1,
-        22: -1,
-        23: -1,
-        24: 25,
-        25: 26,
-        26: 27,
-        27: 30,
-        28: -1,
-        29: -1,
-        30: -1,
-        31: -1,
-    }  # TODO: remove this, seems wrong... if multiple childs, which one is the right one?
-    CHILDS = list(CHILDS_.values())
 
     # Keypoints called joints are those which perform rotation relative to their parent
     # JOINTS = []

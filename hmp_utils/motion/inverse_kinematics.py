@@ -1,180 +1,199 @@
 import numpy as np
-from typing import Union as U
-from typing import Optional as O
-from hmp_utils import RotConverter
-from hmp_utils import SmplConstants, H36MConstants, BodyConstants
+from typing import Union, Optional
+
+from .. import RotConverter, SmplConstants, H36MConstants, BodyConstants, BodyModelType
 
 
-# TODO: check
-class IK:
-    @staticmethod
-    def xyz_to_aa(
-        xyz_positions: np.ndarray,
-        body_constants: O[BodyConstants] = None,
-        parents: O[U[np.ndarray, list]] = None,
-        childs: O[U[np.ndarray, list]] = None,
-        offsets: O[U[np.ndarray, list]] = None,
-        keypoints: O[U[np.ndarray, list]] = None,
-        joints_to_ignore: O[U[np.ndarray, list]] = None,
-        offsets_are_relative: O[bool] = None,
-        left_mul: O[bool] = None,
-        missing_joints: O[U[np.ndarray, list]] = [],
-    ) -> np.ndarray:
+class InverseKinematics:
+    """
+    Compute inverse kinematics for a mocap with a given set of body offsets.
+    """
+
+    def __init__(
+        self,
+        offsets: Union[np.ndarray, list],
+        parents: Union[np.ndarray, list],
+        offsets_are_relative: Optional[bool] = None,
+        left_mul: Optional[bool] = None,
+    ) -> None:
         """
-        Calculate the angle-axis notation for a given body pose starting from the absolute
-        positions of the keypoints.
+        Initialize the inverse kinematics object with the body offsets and parents list.
 
         ---
         ### Args:
-        - xyz_positions (ndarray): 3d absolute positions of the keypoints. Shape=(...,num_keypoints,3)
+        - `offsets` (list, ndarray): keypoint offsets, the first element is the root joint offset.
+        - `parents` (list, ndarray): keypoint parents, the first element is the root joint parent.
+        - `offsets_are_relative` (bool)(optional): whether the given keypoints position offsets are absolute
+            (an array of absolute positions of the body keypoints like AMASS), or relative like
+            Human3.6M where the list contains vectors that displace the position of the keypoint
+            in relation to the position of the parent keypoint. Automatically set with the
+            set_body_model_type() function.
+        - `left_mul` (bool)(optional): whether to concatenate rotations like R3*R2*R1 (AMASS way) or vice versa
+            (Human3.6M way). Automatically set with the set_body_model_type() function.
+        """
+        if not isinstance(offsets, np.ndarray):
+            self.body_link_offsets = np.array(offsets)
+        else:
+            self.body_link_offsets = offsets
 
-        ### Automatic Args:
-        (If not specified they are automatically defined based on body_model_type)
-        - body_model_type (BodyModelType): used to define missing parameters. Actually supported
-        body models are 'BodyModelType.smpl' and 'BodyModelType.h36m'
-        - parents (list): list of the parents of the joints
-        - childs (list): used to find the child of a joint, -1 if there is no child or more then one
-        - offsets (list): lenght of the bones in the body
-        - keypoints (list): all the keypoints in the model, both present and missing in xyz_positions
-        - joints_to_ignore (list): joints that must not be calculated, because they are not
-        present or because they are end effectors or for other reasons. The return value for these
-        joints is [0,0,0]
-        - offsets_are_relative (bool): True if the offset of a joint is defined based on his
-        parent joint, False if it's global
-        - left_mul (bool): True if the order of matrix multiplication is the same as the one used on
-        Human3.6m
+        if isinstance(parents, np.ndarray):
+            self.parents = parents.tolist()
+        else:
+            self.parents = parents
 
-        ### Other Args:
-        (Not automatically set)
-        - missing_joints (list): joints that aren't present in xyz_positions. The return value for these
-        joints is [0,0,0]. Works only if offsets_are_relative==True and all the missing joints parents are
-        also missing!!!
+        self.num_keypoints = len(offsets)
+
+        # Find the first child of every joint
+        self.childs = [-1] * self.num_keypoints
+        for joint_idx in range(self.num_keypoints):
+            if joint_idx in self.parents:
+                self.childs[joint_idx] = self.parents.index(joint_idx)
+
+        if len(self.body_link_offsets) != len(self.parents):
+            raise Exception("Length of keypoint offsets should have same length of keypoint parents list")
+
+        self.offsets_are_relative = offsets_are_relative
+        self.left_mul = left_mul
+
+    def set_body_model_type(self, model_type: BodyModelType) -> None:
+        """
+        The inverse kinematics is computed in a different way depending on the body model type.
+
+        - For SMPL / AMASS mocap use BodyModelType.SMPL
+        - For Human3.6M body mocap use BodyModelType.H36M
+        """
+        if model_type == BodyModelType.SMPL:
+            self.offsets_are_relative = False
+            self.left_mul = False
+        elif model_type == BodyModelType.H36M:
+            self.offsets_are_relative = True
+            self.left_mul = True
+        else:
+            raise Exception(f"Model type not recognized {model_type}")
+
+    def compute_ik(
+        self,
+        joint_pos: np.ndarray,
+        joint_indices: Union[np.ndarray, list],
+        ignore_root_joint: bool = True,
+    ) -> np.ndarray:
+        """
+        Compute inverse kinematics.
 
         ---
+        ### Args:
+        - `joint_pos` (ndarray): keypoint positions with shape (..., num_joints, 3).
+        - `joint_indices` (list, ndarray): indices of the given joint_pos.
+        - `ignore_root_joint` (bool): if set to True, the root joint is ignored and the positions of the
+            root joint is set to the offsets of the root joint.
+        ---
         ### Returns:
-        ndarray of the orinal shape containing the angle-axis (expmap) representation
-        of the input positions
+        A numpy array containing the computed keypoint rotations in angle-axis (expmap) representation.
         """
+        if None in [self.offsets_are_relative, self.left_mul]:
+            raise Exception('Please indicate both values for "offsets are relative" and ' 'whether "left multiplication" should be performed')
 
-        # Save original shape
-        original_shape = xyz_positions.shape
+        if True in [self.offsets_are_relative, self.left_mul]:
+            raise Exception("offsets_are_relative and left_mul set to true is not yet tested (H3.6M)")
 
+        # Assuming `self.num_keypoints` and `self.childs` are already defined within the class this method is part of.
+        not_provided_joints = set(range(self.num_keypoints)).difference(joint_indices)
+        if ignore_root_joint:
+            root_childs = [joint_idx for joint_idx, parent_joint in enumerate(self.parents) if parent_joint == 0]
+            not_provided_joints = not_provided_joints.difference([0] + root_childs)
+        missing_joint_with_childs = [joint for joint in not_provided_joints if self.childs[joint] != -1]
+
+        if len(missing_joint_with_childs) != 0:
+            raise Exception(f"according to joint_indices, {missing_joint_with_childs} is missing")
+
+        input_shape = list(joint_pos.shape)
         # Check if input has the right shape
-        if len(original_shape) < 2 or not original_shape[-1] == 3:
+        if len(input_shape) < 2 or not input_shape[-1] == 3:
             raise Exception(
-                f"""xyz_positions must have at least two dimensions in the form 
-                            (num_keypoints,3), but the input shape is {original_shape}"""
+                f"""joint_pos must have at least two dimensions in the form 
+                            (..., num_keypoints, 3), but the input shape is {input_shape}"""
             )
 
-        # Define missing costants based on body_model_type
-        parents = parents or body_constants.PARENTS
-        childs = childs or body_constants.CHILDS
-        offsets = offsets or body_constants.OFFSETS
-        keypoints = keypoints or body_constants.KEYPOINTS
-        joints_to_ignore = joints_to_ignore or body_constants.JOINTS_TO_IGNORE
-        offsets_are_relative = offsets_are_relative or body_constants.OFFSETS_ARE_RELATIVE
-        left_mul = left_mul or body_constants.LEFT_MUL
-
-        if body_constants == None:
-            if None in [
-                parents,
-                childs,
-                offsets,
-                keypoints,
-                joints_to_ignore,
-                offsets_are_relative,
-                left_mul,
-            ]:
-                raise Exception(f"Please specify a body model type or all the other parameters")
-        elif body_constants not in [H36MConstants, SmplConstants]:
-            raise Exception(f"Body constants type not supported")
-
-        # Calculate present_num_keypoints
-        present_num_keypoints = original_shape[-2]
-
-        # Reshape to (frame,present_num_keypoints,3)
-        xyz_positions = np.reshape(xyz_positions, (-1, present_num_keypoints, 3))
-        new_shape = xyz_positions.shape
-
-        # Calculate total number of frames
-        frames = xyz_positions.shape[0]
-
-        # Calculate total number of keypoints
-        num_keypoints = len(keypoints)
+        # Reshape to (frames, num of input keypoints, 3)
+        joint_pos = np.reshape(joint_pos, (-1, input_shape[-2], 3))
+        tmp_shape = list(joint_pos.shape)
+        tot_frames = tmp_shape[0]
 
         # Update new_shape and return_shape(because of missing joints)
-        new_shape = (new_shape[0], num_keypoints, new_shape[2])
-        return_shape = (*original_shape[:-2], num_keypoints, original_shape[-1])
+        tmp_shape[1] = self.num_keypoints
+        output_shape = input_shape.copy()
+        output_shape[-2] = self.num_keypoints
 
         # Add zeros in the position of the missing joints to get the correct shape
-        xyz_temp = np.zeros(new_shape)
-        shift_position = 0
-        for joint in keypoints:
-            if joint in missing_joints:
-                shift_position += 1
+        full_joint_pos = np.zeros(tmp_shape)
+        full_joint_pos[:, joint_indices] = joint_pos
+
+        if ignore_root_joint:
+            if self.offsets_are_relative:
+                # here it should compute the forward kinematic up to the joint, using [0,0,0]
+                # for the current joint expmap, to find the keypoint absolute position
+                raise Exception(f"offsets_are_relative with ignore_root_joints not implemented yet")
             else:
-                xyz_temp[:, joint] = xyz_positions[:, joint - shift_position]
-        xyz_positions = xyz_temp
+                full_joint_pos[:, [0] + root_childs] = self.body_link_offsets[[0] + root_childs]
 
         # Initialize tensors
-        aa = np.zeros((frames, num_keypoints, 3))
-        rot_mat = np.full(shape=(frames, num_keypoints, 3, 3), fill_value=np.eye(3))
+        all_aa = np.zeros(tmp_shape)
+        all_rot_mat = np.full(shape=(tot_frames, self.num_keypoints, 3, 3), fill_value=np.eye(3))
 
-        # Joints > 0
-        for joint in range(1, num_keypoints):
-            if joint in joints_to_ignore:
+        for joint_idx in range(self.num_keypoints):
+            # skip joints with no childs
+            if self.childs[joint_idx] == -1:
                 continue
-            if joint in missing_joints:
-                if offsets_are_relative:
-                    # here it should compute the forward kinematic up to the joint, using [0,0,0]
-                    # for the current joint expmap, to find the keypoint absolute position
-                    raise Exception(f"Not implemented yet")
-                else:
-                    # works only if all the missing joints parents (and parents of ...) are also missing
-                    xyz_positions[:, joint] = offsets[joint]
+            # skip root joints if ignore_root_joints is True
+            if joint_idx == 0 and ignore_root_joint:
                 continue
 
-            # find parent and child joint, exit if there is no child
-            parent_joint = parents[joint]
-            child_joint = childs[joint]
-            if child_joint == -1:
-                raise Exception(f"Joint {joint} has no childs or more than one")
+            # find parent and child joint
+            parent_joint = self.parents[joint_idx]
+            child_joint = self.childs[joint_idx]
 
-            # calculate offset and real segment and their norm
-            base = np.array(offsets[child_joint])
-            if not offsets_are_relative:
-                base -= np.array(offsets[joint])
-            base_ = np.linalg.norm(base)
-            real = xyz_positions[:, child_joint] - xyz_positions[:, joint]
-            if left_mul:
-                real = np.expand_dims(real, axis=-1)
-                real = np.matmul(rot_mat[:, parent_joint], real)
+            # calculate reference link vector and norm
+            ref_link_vector = np.array(self.body_link_offsets[child_joint])
+            if not self.offsets_are_relative:
+                ref_link_vector -= np.array(self.body_link_offsets[joint_idx])
+            ref_link_norm = np.linalg.norm(ref_link_vector)
+
+            # calculate new link vector and norm
+            new_link_vector = full_joint_pos[:, child_joint] - full_joint_pos[:, joint_idx]
+            if self.left_mul:
+                new_link_vector = np.expand_dims(new_link_vector, axis=-1)
+                if parent_joint != -1:
+                    new_link_vector = np.matmul(all_rot_mat[:, parent_joint], new_link_vector)
             else:
-                real = np.expand_dims(real, axis=-2)
-                real = np.matmul(real, rot_mat[:, parent_joint])
-            real = np.reshape(real, (frames, 3))
-            real_ = np.linalg.norm(real, axis=-1)
+                new_link_vector = np.expand_dims(new_link_vector, axis=-2)
+                if parent_joint != -1:
+                    new_link_vector = np.matmul(new_link_vector, all_rot_mat[:, parent_joint])
+            new_link_vector = np.reshape(new_link_vector, (tot_frames, 3))
+            new_link_norm = np.linalg.norm(new_link_vector, axis=-1)
 
             # calculate angle between offset and real segment
-            dot_prod = real @ base
-            norm_prod = real_ * base_
+            dot_prod = np.dot(new_link_vector, ref_link_vector)
+            norm_prod = new_link_norm * ref_link_norm
             angle = np.expand_dims(np.arccos(dot_prod / norm_prod), axis=-1)
 
             # calculate axis between offset and real segment
-            cross_prod = np.cross(real, base)
-            if not left_mul:
-                # adjust sign for Smpl
-                cross_prod = -cross_prod
-            cross_prod_ = np.expand_dims(np.linalg.norm(cross_prod, axis=-1), axis=-1)
-            axis = cross_prod / cross_prod_
+            cross_prod = np.cross(new_link_vector, ref_link_vector)
+            if not self.left_mul:
+                cross_prod = -cross_prod  # adjust sign for Smpl
+            cross_prod_norm = np.expand_dims(np.linalg.norm(cross_prod, axis=-1), axis=-1)
+            axis = cross_prod / cross_prod_norm
 
             # angle-axis (expmap) notation for the joint
-            aa[:, joint] = axis * angle
+            all_aa[:, joint_idx] = axis * angle
 
             # save cumulative rotation up to the joint
-            rot_mat_temp = RotConverter.aa2rotmat(aa[:, joint])
-            if left_mul:
-                rot_mat[:, joint] = np.matmul(rot_mat_temp, rot_mat[:, parent_joint])
+            rot_mat_joint = RotConverter.aa2rotmat(all_aa[:, joint_idx])
+            if parent_joint != -1:
+                if self.left_mul:
+                    all_rot_mat[:, joint_idx] = np.matmul(rot_mat_joint, all_rot_mat[:, parent_joint])
+                else:
+                    all_rot_mat[:, joint_idx] = np.matmul(all_rot_mat[:, parent_joint], rot_mat_joint)
             else:
-                rot_mat[:, joint] = np.matmul(rot_mat[:, parent_joint], rot_mat_temp)
-        return np.reshape(aa, return_shape)
+                all_rot_mat[:, joint_idx] = rot_mat_joint
+
+        return np.reshape(all_aa, output_shape)

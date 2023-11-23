@@ -9,9 +9,10 @@ from .motion.body_models_constants import (
     H36MConstants,
 )
 from .motion.kinematics import FkReturnType, ForwardKinematics
-from .motion.inverse_kinematics import IK
+from .motion.inverse_kinematics import InverseKinematics
 from .motion.mocap_processor import (
     MocapData,
+    DownsampleMethod,
     MocapLoader,
     Amass2HumanConverter,
     save_h36m_mocap_np2txt,
@@ -26,9 +27,7 @@ from .metrics.evaluation_utils import (
     AMASS_SEQ_LEN,
     SPECTRUM_EVALUATION_SEQ_LEN,
     EVALUATION_TIMESTAMPS_25FPS,
-    EVALUATION_WINDOW_LEN_25FPS,
     EVALUATION_TIMESTAMPS_60FPS,
-    EVALUATION_WINDOW_LEN_60FPS,
     EVALUATION_WINDOW_LEN_DICT,
     EVALUATION_T_DICT,
     SrnnEvaluationFrames,
