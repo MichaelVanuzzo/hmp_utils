@@ -1,3 +1,4 @@
+import pkg_resources
 import numpy as np
 import math
 import os
@@ -363,7 +364,7 @@ def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: Optional[str] = No
         AMASS_DATASETS_BY_ACTION.
     """
     if sets_by_dataset_dict_file_name == None:
-        sets_by_dataset_dict_file_name = os.path.join(os.path.dirname(__name__), "../amass_split.json")
+        sets_by_dataset_dict_file_name = pkg_resources.resource_filename(__name__, "../amass_split")
     with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
         json_data = file.read()
     sets_by_dataset_dict = json.loads(json_data)
