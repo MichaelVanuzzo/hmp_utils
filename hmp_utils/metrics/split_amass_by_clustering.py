@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.model_selection import train_test_split
 
-SEED = 130297
+SEED = 124000
 TRAIN_SET_PERCENTAGE = 90
 TEST_SET_PERCENTAGE = 5
 VALID_SET_PERCENTAGE = 5
@@ -23,22 +23,22 @@ MIN_MOCAP_FRAMES = SOURCE_SEQ_LEN + TARGET_SEQ_LEN
 MOCAP_WINDOW_STEP = 50
 PCA_COMPONENTS = 50
 MIN_CLUSTERS = 30
-MAX_CLUSTERS = 60
+MAX_CLUSTERS = 40
 
 AMASS_DATASETS = [
     # "ACCAD",
     # "GRAB",
-    # "DanceDB",
-    "BMLmovi",
-    "BMLrub",
-    "EyesJapanDataset",
-    "HDM05",
-    "MoSh",
-    "TotalCapture",
-    "CMU",
-    "EKUT",
-    "SFU",
-    "Transitions",
+    "DanceDB",
+    # "BMLmovi",
+    # "BMLrub",
+    # "EyesJapanDataset",
+    # "HDM05",
+    # "MoSh",
+    # "TotalCapture",
+    # "CMU",
+    # "EKUT",
+    # "SFU",
+    # "Transitions",
 ]
 
 
@@ -131,7 +131,10 @@ def split_amass_by_clustering(
     - `dataset_dict` (dict): dictionary of dictionaries containing the train,
         test and validation sets.
     """
-    subdataset_path_lists = [os.path.join(amass_directory, subdataset) for subdataset in AMASS_DATASETS]
+
+    subdataset_path_lists = [
+        os.path.join(amass_directory, subdataset) for subdataset in AMASS_DATASETS
+    ]
 
     subject_list_by_dataset = []
     for subdataset in subdataset_path_lists:
@@ -182,7 +185,9 @@ def split_amass_by_clustering(
 
     # convert the dictionary to JSON format and save it
     json_data = json.dumps(dataset_dict)
-    save_json_path = os.path.join(save_json_dir, "amass_clustering_split")
+    save_json_path = os.path.join(
+        save_json_dir, "dancedb_clustering_split_80_10_10_seed_124000"
+    )
     with open(save_json_path + ".json", "w") as file:
         file.write(json_data)
 
@@ -250,7 +255,7 @@ def get_mocap_embeddings(mocaps_list):
         mocaps_raw_embeddings.append(raw_embedd)
 
     # apply PCA to reduce embedding dimensionality
-    pca = PCA(n_components=PCA_COMPONENTS)
+    pca = PCA(n_components=PCA_COMPONENTS, random_state=SEED)
     pca.fit(mocaps_raw_embeddings)
     mocap_embeddings_list = pca.transform(mocaps_raw_embeddings)
 
@@ -277,7 +282,7 @@ def get_mocap_labels(mocap_embeddings):
     best_n_clusters = 0
 
     for n_clusters in tqdm(clusters_range, desc=f"Clustering mocap windows"):
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=SEED, n_init=10)
         cluster_labels = kmeans.fit(mocap_embeddings).labels_
         score = silhouette_score(mocap_embeddings, cluster_labels)
         if score > best_score:
@@ -329,7 +334,12 @@ def split_dataset(
         size_split_train = math.ceil(train_set_percentage / 100 * dataset_size)
 
     if min([size_split_train, size_split_test, size_split_valid]) < n_clusters:
-        raise Exception("The split sizes should be greater than the number of classes...")
+        raise Exception(
+            "The split sizes should be greater than the number of classes..."
+        )
+    size_split_test = 54
+    size_split_train = 426
+    size_split_valid = 54
 
     # get training set split
     seed_value = SEED
