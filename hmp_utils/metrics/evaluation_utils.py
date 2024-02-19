@@ -46,9 +46,9 @@ EVALUATION_WINDOW_LEN_DICT = {
     60: EVALUATION_WINDOW_LEN_60FPS,
 }
 
-EVALUATION_T_25 = {int(t / (1000 / 25) - 1): t for t in EVALUATION_TIMESTAMPS_25FPS}
-EVALUATION_T_30 = {int(t / (1000 / 30) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
-EVALUATION_T_60 = {int(t / (1000 / 60) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
+EVALUATION_T_25 = {round(t / (1000 / 25) - 1): t for t in EVALUATION_TIMESTAMPS_25FPS}
+EVALUATION_T_30 = {round(t / (1000 / 30) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
+EVALUATION_T_60 = {round(t / (1000 / 60) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
 EVALUATION_T_DICT = {25: EVALUATION_T_25, 30: EVALUATION_T_30, 60: EVALUATION_T_60}
 
 H36M_PSD = {
@@ -506,7 +506,7 @@ class EvaluationProtocol:
                     for frame, _ in EVALUATION_T_DICT[framerate].items():
                         metrics_value.append(metric_post_proc.cumulative(end_frame=frame, normalize=True))
                 elif "frame_" in key:
-                    for frame in range(target_seq_len * 25):
+                    for frame in range(target_seq_len):
                         metrics_value.append(metric_post_proc.instant(at_frame=frame))
                 else:
                     for frame, _ in EVALUATION_T_DICT[framerate].items():
