@@ -53,6 +53,8 @@ from .visualize.stickman_animation import (
     pose_animation,
 )
 
+from .visualize.static_seq import plot_static_seq, translate_and_rotate_poses
+
 from .common.custom_logger import custom_logger
 
 from .deprecated.table import Table

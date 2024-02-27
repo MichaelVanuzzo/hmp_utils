@@ -10,21 +10,23 @@ def plot_body_keypoints(
     keypoint_pos_lst: list,
     parents_lst: Optional[list] = None,
     num_independent_bodies: int = 1,
-    fig_opts: Optional[dict] = None,
-    keypoint_names: Optional[list] = None,
-    elevation=20,
-    azimuth=100,
-    show_grid: bool = False,
-    show_keypoint_id: bool = True,
+    link_size: int = 4,
+    link_style: Optional[list] = None,
     show_keypoint: bool = True,
-    keypoint_marker="o",
+    keypoint_names: Optional[list] = None,
     keypoint_size: int = 100,
     color_list: Optional[list] = None,
-    link_size: int = 4,
-    image_margins_factor: float = 0.9,
+    keypoint_marker="o",
+    show_keypoint_id: bool = True,
+    elevation=0,
+    azimuth=-90,
+    show_grid: bool = False,
     legend_location: Optional[str] = None,
-    body_rotation: tuple = (0, 0, 0),
+    fig_opts: Optional[dict] = None,
+    image_margins_factor: float = 0.9,
     save_svg_path: Optional[str] = None,
+    body_rotation: tuple = (0, 0, 0),
+    debug_axis_length: Optional[float] = None,
 ) -> None:
     """
     Scatter plot of body keypoints positions in 3d, connected if a parents list is provided
@@ -38,17 +40,23 @@ def plot_body_keypoints(
         those missing parents are set to None
     - num_independent_bodies: whether the positions belong to the same body or multiple bodies to plot
         in the same space
-    - fig_opts (dict()): options for the pyplot.figure() call
+    - link_size (int, optional): width of the lines connecting the keypoints. Defaults to 4.
+    - show_keypoint (bool, optional): whether to show the keypoints. Defaults to True.
     - keypoint_names (list, optional): list of keypoint names to print
-    - elevation (int, optional): elevation angle of camera view. Defaults to 20.
-    - azimuth (int, optional): angle of camera view. Defaults to 100.
-    - show_grid (bool, optional): whether to show grid. Defaults to False.
-    - show_keypoint_id (bool, optional): whether to show keypoint ID. Defaults to True.
-    - keypoint_marker (str, optional): type of marker for the keypoints. Defaults to 'o'.
+    - keypoint_size (int, optional): size of the keypoints. Defaults to 100.
     - color_list (list, optional): list of color tuples to plot the skeleton (joints color, keypoints color)
-    - image_margins_factor (float): by how much the margins shold be multiplied (<1 to shrink margins)
+    - keypoint_marker (str, optional): type of marker for the keypoints. Defaults to 'o'.
+    - show_keypoint_id (bool, optional): whether to show keypoint ID. Defaults to True.
+    - elevation (int, optional): elevation angle of camera view. Defaults to 0.
+    - azimuth (int, optional): angle of camera view. Defaults to -90.
+    - show_grid (bool, optional): whether to show grid. Defaults to False.
     - legend_location (str, optional): location of the plot legened
+    - fig_opts (dict()): options for the pyplot.figure() call
+    - image_margins_factor (float): by how much the margins shold be multiplied (<1 to shrink margins)
+    - save_svg_path (str, optional): path to save the plot as an svg file
     - body_rotation (tuple(float)): euler angle in degrees (sequence xyz) to rotate the whole body poses
+        this is deprecated but still supported
+    - debug_axis_length (float, optional): length of the debug axis. Defaults to None.
     """
 
     if color_list is None:
@@ -59,13 +67,15 @@ def plot_body_keypoints(
             ("c", "#008B8B"),
             ("m", "#800080"),
             ("y", "#808000"),
-            ("k", "#202020"),
+            ("#202020", "k"),
         ]
 
-    if fig_opts is None:
-        fig_opts = {"figsize": (10, 10), "dpi": 80}
+    fig_opts = {} if fig_opts is None else fig_opts
+    # if fig_opts is None:
+    #     fig_opts = {"figsize": (10, 10), "dpi": 80}
 
-    fig = plt.figure(**fig_opts)
+    if fig_opts is not None:
+        fig = plt.figure(**fig_opts)
     ax = fig.add_subplot(111, projection="3d")
 
     if num_independent_bodies == 1:
@@ -77,6 +87,7 @@ def plot_body_keypoints(
         raise Exception("num_independent_bodies must be >=1")
 
     # keypoint_pos_lst is a list of poses
+    # this is deprecated but still supported
     if body_rotation != (0, 0, 0):
         body_rotation = np.array(body_rotation) * np.pi / 180
         view_rotmat = RotConverter.euler2rotmat(body_rotation, eul_seq=("xyz"))
@@ -84,7 +95,6 @@ def plot_body_keypoints(
             keypoint_pos_lst[idx] = np.apply_along_axis(lambda x: np.matmul(view_rotmat, x), axis=-1, arr=body)
 
     plot_ranges_lst = []
-
     for pose_id, pose in enumerate(keypoint_pos_lst):
         color_id = pose_id % len(color_list)
         link_color, keypoint_color = color_list[color_id]
@@ -102,7 +112,6 @@ def plot_body_keypoints(
             keyp_name = ""
             if keypoint_names is not None:
                 keyp_name = f"{i}: {keypoint_names[pose_id][i]}" if i < len(keypoint_names[pose_id]) else ""
-
             if show_keypoint:
                 ax.scatter(
                     point[0],
@@ -124,15 +133,17 @@ def plot_body_keypoints(
 
             parent = parents[i]
             parent_point = pose[parent]
-
+            l_style = "-"
+            if link_style is not None:
+                l_style = f"{i}: {link_style[pose_id][i]}" if i < len(keypoint_names[pose_id]) else "-"
             # if it has a parent (not itself and not -1), connect it with a line
             if parent != i and parent != -1:
                 ax.plot(
                     [point[0], parent_point[0]],
                     [point[1], parent_point[1]],
                     [point[2], parent_point[2]],
-                    color = link_color,
-                    linestyle = "-",
+                    color=link_color,
+                    linestyle=l_style,
                     linewidth=link_size,
                 )
 
@@ -144,10 +155,18 @@ def plot_body_keypoints(
     range_min -= image_margin
     range_max += image_margin
 
+    if debug_axis_length is not None:
+        axis = [[[0, debug_axis_length], [0, 0], [0, 0]], [[0, 0], [0, debug_axis_length], [0, 0]], [[0, 0], [0, 0], [0, debug_axis_length]]]
+        axis_colors = ["red", "green", "blue"]
+        for i in range(3):
+            ax.plot(axis[i][0], axis[i][1], axis[i][2], color=axis_colors[i])
+            ax.text(axis[i][0][1], axis[i][1][1], axis[i][2][1], f"{['X','Y','Z'][i]}", fontsize=10 * debug_axis_length)
+            ax.scatter(axis[i][0][1], axis[i][1][1], axis[i][2][1], color=axis_colors[i], marker="o", s=10 * debug_axis_length)
+
     ax.axes.set_xlim3d(left=range_min, right=range_max)
     ax.axes.set_ylim3d(bottom=range_min, top=range_max)
     ax.axes.set_zlim3d(bottom=range_min, top=range_max)
-    
+
     # Set the camera angle
     ax.view_init(elev=elevation, azim=azimuth)
 
@@ -158,9 +177,9 @@ def plot_body_keypoints(
             plt.legend(loc=legend_location)
         else:
             plt.legend(loc="best")
-            
+
     if save_svg_path is not None:
-        plt.savefig(save_svg_path, format='svg', bbox_inches='tight', pad_inches=0.1)
+        plt.savefig(save_svg_path, format="svg", bbox_inches="tight", pad_inches=0.1)
     plt.show()
 
 
