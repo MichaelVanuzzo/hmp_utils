@@ -44,6 +44,7 @@ def translate_and_rotate_poses(poses, axis, theta, offset_next_pose, offset_sequ
 
 def plot_static_seq(
     poses_list: np.array,
+    body_names_colors: Optional[list],
     body_model_type: BodyModelType,
     offset_next_pose: float = 1,
     offset_sequences: float = 0,
@@ -70,6 +71,7 @@ def plot_static_seq(
     Plot a sequence of static poses
     Args:
     - poses_list (np.array): np.array of poses where the fisrst dimension is the number of sequences and the second is the number of poses
+    - body_names_colors (list, optional): list of tuples (body_name, color) to print
     - body_model_type (BodyModelType): body model type
     - offset_next_pose (float): offset to translate the body along the first axis
     - offset_sequences (float): offset to translate the body along the second axis
@@ -113,6 +115,7 @@ def plot_static_seq(
         keypoint_pos_lst=poses_list,
         parents_lst=parents_list,
         num_independent_bodies=len(poses_list),
+        body_names_colors=body_names_colors,
         elevation=elevation,
         azimuth=azimuth,
         link_size=link_size,

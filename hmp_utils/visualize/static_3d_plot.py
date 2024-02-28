@@ -10,6 +10,7 @@ def plot_body_keypoints(
     keypoint_pos_lst: list,
     parents_lst: Optional[list] = None,
     num_independent_bodies: int = 1,
+    body_names_colors: Optional[list] = None,
     link_size: int = 4,
     link_style: Optional[list] = None,
     show_keypoint: bool = True,
@@ -40,6 +41,7 @@ def plot_body_keypoints(
         those missing parents are set to None
     - num_independent_bodies: whether the positions belong to the same body or multiple bodies to plot
         in the same space
+    - body_names_colors (list, optional): list of tuples (body_name, color) to print
     - link_size (int, optional): width of the lines connecting the keypoints. Defaults to 4.
     - show_keypoint (bool, optional): whether to show the keypoints. Defaults to True.
     - keypoint_names (list, optional): list of keypoint names to print
@@ -172,7 +174,12 @@ def plot_body_keypoints(
 
     if not show_grid:
         plt.axis("off")
-    if keypoint_names is not None:
+
+    if body_names_colors is not None:
+        for name, color in body_names_colors:
+            ax.plot([], [], color=color, linestyle="-", linewidth=link_size, label=name)
+
+    if body_names_colors is not None or keypoint_names is not None:
         if legend_location is not None:
             plt.legend(loc=legend_location)
         else:
