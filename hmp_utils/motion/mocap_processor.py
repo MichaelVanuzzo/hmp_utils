@@ -76,7 +76,7 @@ def downsample_motion(
     if method == DownsampleMethod.DECIMATE:
         try:
             downsampling_factor = int(round(source_framerate / target_framerate))
-            original_len = int(np.floor(source_array.shape[0] / downsampling_factor))
+            # original_len = int(np.floor(source_array.shape[0] / downsampling_factor))
             downsampled_array = signal.decimate(source_array, downsampling_factor, zero_phase=True, axis=0)
             return np.array(downsampled_array)
         except ValueError:
@@ -85,8 +85,8 @@ def downsample_motion(
             return None
 
     elif method == DownsampleMethod.RESAMPLE:
-        downsampling_factor = source_framerate / target_framerate
-        downsampled_array = signal.resample_poly(source_array, up=target_framerate, down=source_framerate)
+        # downsampling_factor = source_framerate / target_framerate
+        downsampled_array = signal.resample_poly(source_array, up=round(target_framerate), down=round(source_framerate))
         return np.array(downsampled_array)
 
     elif method == DownsampleMethod.SLERP:
