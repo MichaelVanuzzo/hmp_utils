@@ -29,70 +29,32 @@ import imageio
 
 
 # render with pyrender
-def img_from_pyrender(joints, plot_joints, vertices, vertex_colors, gui_viewport, model_faces):
+def img_from_pyrender(vertices, vertex_colors, model_faces, width=800, height=800):
     import pyrender
     import trimesh
 
     vertex_colors = torch.ones([vertices.shape[0], 4]) * vertex_colors
 
     tri_mesh = trimesh.Trimesh(vertices, model_faces, vertex_colors=vertex_colors)
-
     mesh = pyrender.Mesh.from_trimesh(tri_mesh)
 
     scene = pyrender.Scene()
     scene.add(mesh)
 
-    if plot_joints:
-        sphere_mesh = trimesh.creation.uv_sphere(radius=0.005)
-        sphere_mesh.visual.vertex_colors = [0.9, 0.1, 0.1, 1.0]
-        tfs = np.tile(np.eye(4), (len(joints), 1, 1))
-        tfs[:, :3, 3] = joints
-        tfs = tfs[:24]
-        joints_pcl = pyrender.Mesh.from_trimesh(sphere_mesh, poses=tfs)
-        scene.add(joints_pcl)
-
-    #### VIEW SCENE WITH GUI VIEWPORT ####
-    if gui_viewport:
-        pyrender.Viewer(scene, use_raymond_lighting=True)
-
     #### 2D RENDER ####
     # -- CAMERA --
-    # image size
-    width, height = 800, 800
-    METHOD = 3
-    if METHOD == 1:
-        # camera position METHOD 1 - (would be better to automate)
-        camera_x = (np.min(vertices[:, 0]) + np.max(vertices[:, 0])) / 2
-        camera_y = (np.min(vertices[:, 1]) + np.max(vertices[:, 1])) / 2
-        camera_z = abs((np.min(vertices[:, 2]) + np.max(vertices[:, 2]))) * 150
-        viewpoint = np.array([camera_x, camera_y, camera_z])
-        camera_pose = np.eye(4)
-        camera_pose[:3, 3] = viewpoint
-    elif METHOD == 2:
-        # camera position METHOD 2 - with numpy
-        yfov = np.pi / 3.0
-        # Get the bounds of the mesh
-        min_bounds, max_bounds = mesh.bounds
-        # Compute the sphere that encompasses the mesh
-        center = (min_bounds + max_bounds) / 2.0
-        radius = np.linalg.norm(max_bounds - center)
-        # Calculate the optimal camera position
-        distance = radius / np.sin(yfov / 2)  # yfov in our example is pi/3
-        camera_pose = np.eye(4)
-        camera_pose[:3, 3] = center + np.array([0, 0, distance])
-    elif METHOD == 3:
-        # camera position METHOD 3 - with torch
-        yfov = np.pi / 3.0
-        # Get the bounds of the mesh
-        min_bounds, max_bounds = mesh.bounds
-        min_bounds, max_bounds = torch.tensor(min_bounds), torch.tensor(max_bounds)
-        # Compute the sphere that encompasses the mesh
-        center = (min_bounds + max_bounds) / 2.0
-        radius = torch.norm(max_bounds - center)
-        # Calculate the optimal camera position
-        distance = radius / torch.sin(torch.tensor(yfov / 2))  # yfov in our example is pi/3
-        camera_pose = torch.eye(4)
-        camera_pose[:3, 3] = center + torch.tensor([0, 0, distance])
+    # camera position
+    yfov = np.pi / 3.0
+    # Get the bounds of the mesh
+    min_bounds, max_bounds = mesh.bounds
+    min_bounds, max_bounds = torch.tensor(min_bounds), torch.tensor(max_bounds)
+    # Compute the sphere that encompasses the mesh
+    center = (min_bounds + max_bounds) / 2.0
+    radius = torch.norm(max_bounds - center)
+    # Calculate the optimal camera position
+    distance = radius / torch.sin(torch.tensor(yfov / 2))  # yfov in our example is pi/3
+    camera_pose = torch.eye(4)
+    camera_pose[:3, 3] = center + torch.tensor([0, 0, distance])
 
     camera = pyrender.PerspectiveCamera(yfov=yfov)
     scene.add(camera, pose=camera_pose)
@@ -139,7 +101,7 @@ def img_from_pyrender(joints, plot_joints, vertices, vertex_colors, gui_viewport
 
 
 # render with matplotlib
-def img_from_matplotlib(joints, plot_joints, vertices, model_faces):
+def img_from_matplotlib(vertices, model_faces, elev=90, azim=-90, figsize=(8, 8), lim3D=(-1, 1)):
     from matplotlib import pyplot as plt
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
@@ -147,8 +109,6 @@ def img_from_matplotlib(joints, plot_joints, vertices, model_faces):
     ax = fig.add_subplot(111, projection="3d")
     ax.axis("equal")
     ax.axis("off")
-    elev = 90
-    azim = -90
     ax.view_init(elev=elev, azim=azim)
     ax.axes.set_xlim3d(-1, 1)
     ax.axes.set_ylim3d(-1, 1)
@@ -160,9 +120,6 @@ def img_from_matplotlib(joints, plot_joints, vertices, model_faces):
     face_color = (0.9, 0.9, 0.9)
     mesh.set_facecolor(face_color)
     ax.add_collection3d(mesh)
-
-    # if plot_joints:
-    #     ax.scatter(joints[:, 0], joints[:, 1], joints[:, 2], color='r', alpha=0.1)
 
     img_buf = io.BytesIO()
     fig.savefig(img_buf, format="png")
@@ -197,27 +154,19 @@ def get_vertices_and_joints(pose, betas, expression, model):
 # process a single frame with the selected plotting module
 def process_frame(
     vertices,
-    joints,
     vertex_colors,
-    gui_viewport,
-    plot_joints,
     model_faces,
     plotting_module,
     print_progress=False,
 ):
     if plotting_module == "pyrender":
         img = img_from_pyrender(
-            joints=joints,
-            plot_joints=plot_joints,
             vertices=vertices,
             vertex_colors=vertex_colors,
-            gui_viewport=gui_viewport,
             model_faces=model_faces,
         )
     elif plotting_module == "matplotlib":
         img = img_from_matplotlib(
-            joints=joints,
-            plot_joints=plot_joints,
             vertices=vertices,
             model_faces=model_faces,
         )
@@ -240,14 +189,13 @@ def run_multiprocessing(processors, arg_list):
 
 
 def render_3d_smpl(
+    mocap_poses,  #
     model_type="smpl",
     model_folder: Optional[str] = None,
-    mocap_file: Optional[str] = None,
     output_folder: Optional[str] = None,
     output_name: Optional[str] = None,
-    plot_joints=False,
     plotting_module="matplotlib",
-    framerate_factor: int = 1,
+    framerate: int = 25,
     multithread: bool = True,
     processors: int = 1,
     gender="neutral",
@@ -255,7 +203,6 @@ def render_3d_smpl(
     num_betas=10,
     num_expression_coeffs=10,
     ext="npz",
-    gui_viewport: bool = False,
     sample_shape=False,
     sample_expression=False,
 ):
@@ -269,7 +216,6 @@ def render_3d_smpl(
         num_expression_coeffs=num_expression_coeffs,
         ext=ext,
     )
-    # print(model)
 
     #### BODY SHAPE ####
     if sample_shape:
@@ -302,33 +248,19 @@ def render_3d_smpl(
     else:
         expression = None
 
-    #### POSE ####
-    print("Loading mocap file:", mocap_file)
-    amass_data = np.load(mocap_file)
-    if amass_data is None:
-        raise Exception(f"Cannot load the mocap file.")
-
-    framerate = float(amass_data["mocap_framerate"]) / framerate_factor
-    joints_to_load = 22  # dont' load the hands
-    frame_to_load = slice(0, amass_data["poses"].shape[0], framerate_factor)
-    amass_smpl_poses = np.array(amass_data["poses"])[frame_to_load, 3 : joints_to_load * 3]
-    mocap_poses = torch.tensor(amass_smpl_poses, dtype=torch.float32)
     vertex_colors = torch.tensor([0.1, 0.1, 0.1, 0.7])
 
     #### PROCESSING ####
     total_frames = mocap_poses.shape[0]
     print(f"Total frames to process: {total_frames}")
     if not multithread:
-        # old single thread version
+        # single thread version
         video_frames = []
         for frame_idx in trange(total_frames):
             vertices, joints = get_vertices_and_joints(mocap_poses[frame_idx], betas, expression, model)
             img = process_frame(
                 vertices=vertices,
-                joints=joints,
                 vertex_colors=vertex_colors,
-                gui_viewport=gui_viewport,
-                plot_joints=plot_joints,
                 model_faces=model.faces,
                 plotting_module=plotting_module,
             )
@@ -342,10 +274,7 @@ def render_3d_smpl(
             arg_list.append(
                 {
                     "vertices": vertices,
-                    "joints": joints,
                     "vertex_colors": vertex_colors,
-                    "gui_viewport": gui_viewport,
-                    "plot_joints": plot_joints,
                     "model_faces": model.faces,
                     "plotting_module": plotting_module,
                     "print_progress": True,
@@ -358,7 +287,7 @@ def render_3d_smpl(
 
     # create folder if missing
     if output_folder is None:
-        output_folder = "./rendered_video/"
+        output_folder = "./render/"
     if not osp.exists(output_folder):
         os.makedirs(output_folder)
 
