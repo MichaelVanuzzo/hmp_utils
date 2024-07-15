@@ -206,3 +206,69 @@ class RotConverter:
 
         # restore original shape
         return np.reshape(aa_seq, return_shape)
+
+    @staticmethod
+    def aa2quat(
+        input_seq: Union[list, np.ndarray],
+        scalar_first: Optional[bool] = False,
+    ) -> np.ndarray:
+        """
+        Convert angle-axis representation into quaternion.
+        Shapes: from (..., 3) to (..., 4).
+
+        Default quaternion representation is vector-first.
+
+        ---
+        ### Args:
+        - `input_seq` (list, ndarray): angle-axis sequence with shape (..., 3)
+        - `scalar_first` (bool): whether to use scalar-first quaternion representation
+        ---
+        ### Returns:
+        - `quaternion_seq` (ndarray): quaternion sequence with shape (..., 4)
+        """
+        if not isinstance(input_seq, np.ndarray):
+            input_seq = np.array(input_seq)
+
+        assert input_seq.shape[-1] == 3
+        return_shape = (*input_seq.shape[:-1], 4)
+
+        # isolate single rotations for conversion
+        input_seq = np.reshape(input_seq, (-1, 3))
+        rotation = Rotation.from_rotvec(input_seq)
+        quat_seq = rotation.as_quat(scalar_first=scalar_first)
+
+        # restore original shape
+        return np.reshape(quat_seq, return_shape)
+
+    @staticmethod
+    def quat2aa(
+        input_seq: Union[list, np.ndarray],
+        scalar_first: Optional[bool] = False,
+    ) -> np.ndarray:
+        """
+        Convert quaternion representation into angle-axis.
+        Shapes: from (..., 4) to (..., 3).
+
+        Default quaternion representation is vector-first.
+
+        ---
+        ### Args:
+        - `input_seq` (list, ndarray): quaternion sequence with shape (..., 4)
+        - `scalar_first` (bool): whether quaternion representation is scalar-first
+        ---
+        ### Returns:
+        - `aa_seq` (ndarray): angle-axis sequence with shape (..., 3)
+        """
+        if not isinstance(input_seq, np.ndarray):
+            input_seq = np.array(input_seq)
+
+        assert input_seq.shape[-1] == 4
+        return_shape = (*input_seq.shape[:-1], 3)
+
+        # isolate single rotations for conversion
+        input_seq = np.reshape(input_seq, (-1, 4))
+        rotation = Rotation.from_quat(input_seq, scalar_first=scalar_first)
+        aa_seq = rotation.as_rotvec()
+
+        # restore original shape
+        return np.reshape(aa_seq, return_shape)
