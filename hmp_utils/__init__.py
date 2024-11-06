@@ -1,6 +1,7 @@
 from .common.os_utils import mkdir_if_missing
 from .common.pandas_utils import TableManager
 from .common.rot_converter import RotConverter
+from .common.tf_utils import TfUtils
 
 from .motion.body_models_constants import (
     BodyModelType,
@@ -60,3 +61,5 @@ from .visualize.render_3d_smpl import render_3d_smpl, plot_static_mesh_sequence
 from .common.custom_logger import custom_logger
 
 from .deprecated.table import Table
+
+from .deprecated.ik import IK
