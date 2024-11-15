@@ -23,6 +23,7 @@ class MocapData:
         self,
         rots: np.ndarray,
         trans: np.ndarray,
+        betas: np.ndarray,
         original_framerate: float,
         framerate: float,
         gender: str,
@@ -42,6 +43,7 @@ class MocapData:
         self.rots = rots
         # trans: translation of root joint (num_frames, 1, 3)
         self.trans = trans
+        self.betas = betas
         self.original_framerate = original_framerate
         self.framerate = framerate
         self.gender = gender
@@ -298,7 +300,7 @@ class MocapLoader:
         - The downsampled mocap trajectory as the MocapData object.
         - None if the target framerate is higher than the mocap framerate
         """
-        data = np.load(file_path)
+        data = np.load(file_path, allow_pickle=True)
 
         if data is None:
             raise Exception(f"Could not load mocap file {file_path}")
@@ -318,6 +320,11 @@ class MocapLoader:
 
         rot_trajectory = np.array(data["poses"])
         trans_trajectory = np.array(data["trans"])
+        
+        if "betas" in data.files:
+            betas = np.array(data["betas"])
+        else:
+            betas = None
 
         if "mocap_frame_rate" in data.files:
             original_framerate = float(data["mocap_frame_rate"])
@@ -352,6 +359,7 @@ class MocapLoader:
             return MocapData(
                 rot_trajectory,
                 trans_trajectory,
+                betas,
                 original_framerate,
                 original_framerate,
                 gender,
@@ -377,6 +385,7 @@ class MocapLoader:
         return MocapData(
             rot_trajectory,
             trans_trajectory,
+            betas,
             original_framerate,
             downsampled_framerate,
             gender,
