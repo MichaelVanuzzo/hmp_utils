@@ -56,7 +56,7 @@ from .visualize.stickman_animation import (
 
 from .visualize.static_seq import plot_static_seq, translate_and_rotate_poses
 
-from .visualize.render_3d_smpl import render_3d_smpl, plot_static_mesh_sequence
+from .visualize.render_3d_smpl import render_3d_smpl
 
 from .common.custom_logger import custom_logger
 
