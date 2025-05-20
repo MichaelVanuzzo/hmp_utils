@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 setup(
     name="hmp_utils",
     version="0.0.1",
-    author="C-Square Lab",
-    author_email="csquare@mailfence.com",
+    author="Michael Vanuzzo",
+    author_email="michaelvanuzzo@gmail.com",
     packages=find_packages(),
     # package_dir={'': 'src'},
     # url='https://github.com/.../...',
@@ -15,6 +15,6 @@ setup(
         # 'torch',
     ],
     package_data={
-        "hmp_utils": ["pds_files/*.npy","amass_split.json"],
+        "hmp_utils": ["pds_files/*.npy", "amass_split.json"],
     },
 )
