@@ -194,13 +194,13 @@ class InverseKinematics:
                 ref_link_vector_2 = np.array(self.body_link_offsets[2])
                 if not self.offsets_are_relative:
                     ref_link_vector_2 -= np.array(self.body_link_offsets[joint_idx])
-                
+
                 # compute rotmat to align link1
                 align_link1_rotmat = RotConverter.aa2rotmat(all_aa[:, joint_idx])
 
                 # replicate the offset vector for all frames
-                ref_link_vector_1 = (np.tile(ref_link_vector, (tot_frames, 1)))
-                ref_link_vector_2 = (np.tile(ref_link_vector_2, (tot_frames, 1)))
+                ref_link_vector_1 = np.tile(ref_link_vector, (tot_frames, 1))
+                ref_link_vector_2 = np.tile(ref_link_vector_2, (tot_frames, 1))
 
                 # target links
                 new_link_vector_2 = full_joint_pos[:, 2] - full_joint_pos[:, joint_idx]
@@ -208,8 +208,8 @@ class InverseKinematics:
                 new_link_vector_2 = np.reshape(new_link_vector_2, (tot_frames, 3))
 
                 # align the link vectors for link1 and link2
-                first_rot_link1 = np.reshape(np.matmul(align_link1_rotmat, ref_link_vector_1[:,:,np.newaxis]), (tot_frames, 3))
-                first_rot_link2 = np.reshape(np.matmul(align_link1_rotmat, ref_link_vector_2[:,:,np.newaxis]), (tot_frames, 3))
+                first_rot_link1 = np.reshape(np.matmul(align_link1_rotmat, ref_link_vector_1[:, :, np.newaxis]), (tot_frames, 3))
+                first_rot_link2 = np.reshape(np.matmul(align_link1_rotmat, ref_link_vector_2[:, :, np.newaxis]), (tot_frames, 3))
 
                 # compute new rotation axis around link1
                 new_axis = first_rot_link1 / np.linalg.norm(first_rot_link1, axis=1, keepdims=True)
@@ -219,7 +219,6 @@ class InverseKinematics:
                 T = new_link_vector_2 / np.linalg.norm(new_link_vector_2, axis=1, keepdims=True)
 
                 # Project L and T onto the plane perpendicular to new_axis
-                a = L * new_axis
                 dot_prod_L = np.sum(L * new_axis, axis=1)
                 L_perp = L - dot_prod_L[:, np.newaxis] * new_axis
                 dot_prod_T = np.sum(T * new_axis, axis=1)
@@ -234,7 +233,7 @@ class InverseKinematics:
                 theta = np.arccos(np.clip(cos_theta[:, np.newaxis], -1.0, 1.0))
 
                 # Determine if we need to reverse the direction of the angle
-                cross_product = np.cross(L_perp, T_perp) # N,3
+                cross_product = np.cross(L_perp, T_perp)  # N,3
                 for i in range(cross_product.shape[0]):
                     if np.dot(cross_product[i], new_axis[i]) < 0:
                         theta[i] = -theta[i]
