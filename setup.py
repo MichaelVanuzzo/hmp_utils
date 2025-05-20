@@ -5,16 +5,31 @@ setup(
     version="0.0.1",
     author="Michael Vanuzzo",
     author_email="michaelvanuzzo@gmail.com",
+    description="Human Motion Prediction Utilities",
     packages=find_packages(),
-    # package_dir={'': 'src'},
-    # url='https://github.com/.../...',
-    # keywords='example project',
+    license="GNU Affero General Public License v3 (AGPL-3.0)",
+    license_files=("LICENSE",),
+    # url="",  # You may want to add a project URL here
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "Operating System :: OS Independent",
+    ],
     install_requires=[
-        # //examples:
-        # 'numpy',
-        # 'torch',
+        "numpy",
+        "scipy",
+        "pandas",
+        "matplotlib",
+        "torch",
+        "smplx",
+        "scikit-learn",
+        "tqdm",
+        "pillow",
+        "imageio",
+        "ipywidgets",
     ],
     package_data={
         "hmp_utils": ["pds_files/*.npy", "amass_split.json"],
     },
+    python_requires=">=3.6",
 )
