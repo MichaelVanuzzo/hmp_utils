@@ -195,7 +195,7 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     Set parents to None in order to use the origin as a parent for all the points.
     """
 
-    def plot_body_keypoints_(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
+    def plot_body_keypoints(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
         return plot_body_keypoints(
             keypoint_pos_lst=frame_joint_pos,
             parents_lst=parents,
@@ -214,7 +214,7 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     view_joint_slider = widgets.IntSlider(min=0, max=1, value=1, description="Joint IDs")
 
     widgets.interact(
-        plot_body_keypoints_,
+        plot_body_keypoints,
         elevation_slider=elevation_slider,
         azimuth_slider=azimuth_slider,
         view_axis_slider=view_axis_slider,

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="hmp_utils",
-    version="0.0.1",
+    version="0.1.0",
     author="Michael Vanuzzo",
     author_email="michaelvanuzzo@gmail.com",
     description="Human Motion Prediction Utilities",
