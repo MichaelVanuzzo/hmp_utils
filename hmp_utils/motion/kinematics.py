@@ -131,7 +131,7 @@ class ForwardKinematics:
         if return_type == FkReturnType.POSITIONS:
             # return 3d positions
             return_shape = (*batch_shape, self.num_keypoints, 3)
-        elif FkReturnType.POSITIONS:
+        elif return_type == FkReturnType.ROTATIONS:
             # return rotation matrices
             return_shape = (*batch_shape, self.num_keypoints, 3, 3)
         else:
