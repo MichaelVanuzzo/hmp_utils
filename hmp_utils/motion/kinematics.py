@@ -20,6 +20,7 @@ class ForwardKinematics:
         parents: Union[np.ndarray, list],
         offsets_are_relative: Optional[bool] = None,
         left_mul: Optional[bool] = None,
+        correction_factor: float = 1.0,
     ) -> None:
         """
         Initialize the forward kinematics object with the body offsets and parents list.
@@ -35,11 +36,14 @@ class ForwardKinematics:
             set_body_model_type() function.
         - `left_mul` (bool)(optional): whether to concatenate rotations like R3*R2*R1 (AMASS way) or vice versa
             (Human3.6M way). Automatically set with the set_body_model_type() function.
+        - `correction_factor` (float)(optional): a factor to scale the offsets, default is 1.0.
         """
         if not isinstance(offsets, np.ndarray):
             self.body_link_offsets = np.array(offsets)
         else:
             self.body_link_offsets = offsets
+
+        self.body_link_offsets *= correction_factor
 
         if not isinstance(parents, np.ndarray):
             self.parents = np.array(parents)
