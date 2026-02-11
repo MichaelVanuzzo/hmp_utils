@@ -39,6 +39,9 @@ def pose_animation(
     camera_orientations: Optional[Union[CameraOrientation, "list[CameraOrientation]"]] = None,
     show_grid: bool = False,
     show_keypoint_id: bool = False,
+    follow_root: bool = False,
+    show_trace: bool = False,
+    show_floor: bool = False,
     fig_opts: Optional[dict] = None,
 ):
     """
@@ -62,6 +65,9 @@ def pose_animation(
         or specify an orientation for each subplot
     - show_grid (bool): whether to show the plotlib grid or not
     - show_keypoint_id (bool): whether to show the keypoint number adjacent to keypoint position in 3d
+    - follow_root (bool): whether to make the camera follow the root keypoint position during the animation
+    - show_trace (bool): whether to show the trace of the root keypoint trajectory on the ground
+    - show_floor (bool): whether to show a floor plane in the animation
     - fig_opts (dict, optional): figure options as argument for the plt.figure() method
     """
 
@@ -124,16 +130,28 @@ def pose_animation(
     for ax in axes:
         subplot_info_text_lst.append(ax.text2D(0.05, 0.05, "", transform=ax.transAxes, ha="left", va="bottom"))
 
-    # -- DEFINE LINES TO BE PLOTTED --
     # For efficiency, the lines are plotted one time and then updated during the animation
     # shape: (num_mocaps, num_keypoints)
     plot_keypoint = []
     plot_lines = []
+    plot_traces = [] # trace pelvis traj on the ground
+
     for mocap_id, mocap_positions in enumerate(mocap_list):
         ax_id = subplot_ids[mocap_id]
         ax = axes[ax_id]
         # le linee sono inizializzate nel primo frame del mocap
         keypoint_positions = mocap_positions[0]
+
+        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+
+        if show_floor:
+            ax.zaxis.set_pane_color((0.8, 0.8, 0.8, 1.0)) 
+
+        if show_trace:
+            trace_line, = ax.plot([], [], [], "--", color=subplot_colors[mocap_id], alpha=0.5, linewidth=1.0)
+            plot_traces.append(trace_line)
 
         plot_keypoint.append([])
         plot_lines.append([])
@@ -171,7 +189,13 @@ def pose_animation(
         ax.view_init(elev=elev, azim=azim)
         # grid visibility
         if not show_grid:
-            ax.axis("off")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_zticks([])
+            ax.xaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
+            ax.yaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
+            ax.zaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
+            ax.grid(False)
 
     def update(frame):
         """
@@ -180,6 +204,13 @@ def pose_animation(
         for mocap_id, mocap_positions in enumerate(mocap_list):
             subplot_info_text_lst[subplot_ids[mocap_id]].set_text(f"frame: {frame+1}/{len(mocap_positions)} | time: {(frame+1)/animation_framerate:.2f} s")
             keypoint_positions = mocap_positions[frame]
+
+            # update trace
+            if show_trace:
+                path = mocap_positions[:frame+1, 0, :] 
+                plot_traces[mocap_id].set_data(path[:, 0], path[:, 1])
+                current_floor = np.min(keypoint_positions[:, 2]) 
+                plot_traces[mocap_id].set_3d_properties(np.full(len(path), current_floor))
 
             # Plot the points
             for i, point in enumerate(keypoint_positions):
@@ -194,6 +225,15 @@ def pose_animation(
                     line = plot_lines[mocap_id][i]
                     line.set_data([point[0], parent_point[0]], [point[1], parent_point[1]])
                     line.set_3d_properties([point[2], parent_point[2]])
+
+            if follow_root:
+                # update camera
+                span = 1.0 
+                root_pos = mocap_list[0][frame][0]
+                
+                ax.set_xlim3d(root_pos[0] - span, root_pos[0] + span)
+                ax.set_ylim3d(root_pos[1] - span, root_pos[1] + span)
+                ax.set_zlim3d(root_pos[2] - 1.0, root_pos[2] + 1.0)
 
     # apply plot options to each axis
     for ax_id, ax in enumerate(axes):
