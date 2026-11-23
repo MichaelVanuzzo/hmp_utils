@@ -63,6 +63,8 @@ class RotConverter:
         ---
         ### Args:
         - `input_seq` (list, ndarray): Euler angle sequence with shape (..., 3)
+        - `eul_seq` (str): Euler sequence to use for conversion
+        - `eul_degrees` (bool): Euler unit
         ---
         ### Returns:
         - `rotmat_seq` (ndarray): rotation matrix sequence with shape (..., 3, 3)
@@ -183,7 +185,7 @@ class RotConverter:
     @staticmethod
     def rotmat2aa(input_seq: Union[list, np.ndarray]) -> np.ndarray:
         """
-        Convert rotation matri representation into angle-axis.
+        Convert rotation matrix representation into angle-axis.
         Shapes: from (..., 3, 3) to (..., 3).
 
         ---
@@ -235,7 +237,9 @@ class RotConverter:
         # isolate single rotations for conversion
         input_seq = np.reshape(input_seq, (-1, 3))
         rotation = Rotation.from_rotvec(input_seq)
-        quat_seq = rotation.as_quat(scalar_first=scalar_first)
+        quat_seq = rotation.as_quat()
+        if scalar_first:
+            quat_seq = quat_seq[:, [3, 0, 1, 2]]
 
         # restore original shape
         return np.reshape(quat_seq, return_shape)
@@ -267,7 +271,9 @@ class RotConverter:
 
         # isolate single rotations for conversion
         input_seq = np.reshape(input_seq, (-1, 4))
-        rotation = Rotation.from_quat(input_seq, scalar_first=scalar_first)
+        if scalar_first:
+            input_seq = input_seq[:, [1, 2, 3, 0]]
+        rotation = Rotation.from_quat(input_seq)
         aa_seq = rotation.as_rotvec()
 
         # restore original shape

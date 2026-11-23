@@ -33,12 +33,8 @@ class InverseKinematics:
             (Human3.6M way). Automatically set with the set_body_model_type() function.
         - `correction_factor` (float)(optional): a factor to scale the offsets, default is 1.0.
         """
-        if not isinstance(offsets, np.ndarray):
-            self.body_link_offsets = np.array(offsets)
-        else:
-            self.body_link_offsets = offsets
-
-        self.body_link_offsets *= correction_factor
+        self.body_link_offsets = np.array(offsets, dtype=float, copy=True) * correction_factor
+        self.model_type: Optional[BodyModelType] = None
 
         if isinstance(parents, np.ndarray):
             self.parents = parents.tolist()
@@ -180,14 +176,19 @@ class InverseKinematics:
             # calculate angle between offset and real segment
             dot_prod = np.dot(new_link_vector, ref_link_vector)
             norm_prod = new_link_norm * ref_link_norm
-            angle = np.expand_dims(np.arccos(dot_prod / norm_prod), axis=-1)
+            angle = np.expand_dims(np.arccos(np.clip(dot_prod / norm_prod, -1.0, 1.0)), axis=-1)
 
             # calculate axis between offset and real segment
             cross_prod = np.cross(new_link_vector, ref_link_vector)
             if not self.left_mul:
                 cross_prod = -cross_prod  # adjust sign for Smpl
             cross_prod_norm = np.expand_dims(np.linalg.norm(cross_prod, axis=-1), axis=-1)
-            axis = cross_prod / cross_prod_norm
+            axis = np.divide(
+                cross_prod,
+                cross_prod_norm,
+                out=np.zeros_like(cross_prod, dtype=float),
+                where=cross_prod_norm > 1e-12,
+            )
 
             # angle-axis (expmap) notation for the joint
             all_aa[:, joint_idx] = axis * angle

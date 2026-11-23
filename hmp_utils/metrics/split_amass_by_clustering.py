@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.model_selection import train_test_split
 
-SEED = 124000
+SEED = 130297
 TRAIN_SET_PERCENTAGE = 90
 TEST_SET_PERCENTAGE = 5
 VALID_SET_PERCENTAGE = 5
@@ -23,7 +23,7 @@ MIN_MOCAP_FRAMES = SOURCE_SEQ_LEN + TARGET_SEQ_LEN
 MOCAP_WINDOW_STEP = 50
 PCA_COMPONENTS = 50
 MIN_CLUSTERS = 30
-MAX_CLUSTERS = 40
+MAX_CLUSTERS = 60
 
 AMASS_DATASETS = [
     # "ACCAD",
@@ -115,14 +115,14 @@ def split_amass_by_clustering(
     """
     Returns a dictionary of dictionaries containing the train, test and validation sets
     which are obtained by extracting from the original mocaps different windows. Windows
-    are splitted based on a clustering alogorithm.
+    are split based on a clustering algorithm.
 
 
     ---
     ### Args:
     - `amass_directory` (str): absolute path to the AMASS dataset root directory.
-    - `save_mocaps_dir` (srt): absolute path where to save the extracted mocap windows.
-    - `save_json_dir` (srt): absolute path where to save the dictionary as .json fils.
+    - `save_mocaps_dir` (str): absolute path where to save the extracted mocap windows.
+    - `save_json_dir` (str): absolute path where to save the dictionary as .json files.
     - `train_set_percentage` (float): percentage of samples to be used for the train set (default: 90).
     - `test_set_percentage` (float): percentage of samples to be used for the test set (default: 5).
     - `valid_set_percentage` (float): percentage of samples to be used for the validation set (default: 5).
@@ -132,9 +132,7 @@ def split_amass_by_clustering(
         test and validation sets.
     """
 
-    subdataset_path_lists = [
-        os.path.join(amass_directory, subdataset) for subdataset in AMASS_DATASETS
-    ]
+    subdataset_path_lists = [os.path.join(amass_directory, subdataset) for subdataset in AMASS_DATASETS]
 
     subject_list_by_dataset = []
     for subdataset in subdataset_path_lists:
@@ -185,9 +183,8 @@ def split_amass_by_clustering(
 
     # convert the dictionary to JSON format and save it
     json_data = json.dumps(dataset_dict)
-    save_json_path = os.path.join(
-        save_json_dir, "dancedb_clustering_split_80_10_10_seed_124000"
-    )
+    os.makedirs(save_json_dir, exist_ok=True)
+    save_json_path = os.path.join(save_json_dir, "amass_clustering_split")
     with open(save_json_path + ".json", "w") as file:
         file.write(json_data)
 
@@ -220,9 +217,10 @@ def split_mocap_into_windows(mocap, mocap_name):
                 MocapData(
                     new_rots,
                     new_trans,
+                    mocap.betas,
                     TARGET_FRAMERATE,
                     TARGET_FRAMERATE,
-                    gender="neutral",
+                    gender=mocap.gender,
                 ),
                 mocap_name + "_" + str(index),
             ]
@@ -334,12 +332,7 @@ def split_dataset(
         size_split_train = math.ceil(train_set_percentage / 100 * dataset_size)
 
     if min([size_split_train, size_split_test, size_split_valid]) < n_clusters:
-        raise Exception(
-            "The split sizes should be greater than the number of classes..."
-        )
-    size_split_test = 54
-    size_split_train = 426
-    size_split_valid = 54
+        raise Exception("The split sizes should be greater than the number of classes...")
 
     # get training set split
     seed_value = SEED

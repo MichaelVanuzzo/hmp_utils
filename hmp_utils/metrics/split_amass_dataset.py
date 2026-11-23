@@ -1,4 +1,3 @@
-import pkg_resources
 import numpy as np
 import math
 import os
@@ -325,7 +324,7 @@ def split_amass_dataset(
         for key, value in sets_dict.items():
             sets_by_dataset_dict[key][subdatset_name] = value
 
-    if sets_by_dataset_dict_file_name != None:
+    if sets_by_dataset_dict_file_name is not None:
         if use_relative_path:
             for key, value in sets_by_dataset_dict.items():
                 for subdataset_name, mocap_list in value.items():
@@ -363,13 +362,13 @@ def load_sets_by_dataset_dict(sets_by_dataset_dict_file_name: Optional[str] = No
         test and validation sets for each sub dataset in AMASS_DATASETS_BY_SUBJECT and
         AMASS_DATASETS_BY_ACTION.
     """
-    if sets_by_dataset_dict_file_name == None:
-        sets_by_dataset_dict_file_name = pkg_resources.resource_filename(__name__, "../amass_split")
+    if sets_by_dataset_dict_file_name is None:
+        sets_by_dataset_dict_file_name = os.path.join(os.path.dirname(__file__), "../amass_split")
     with open(sets_by_dataset_dict_file_name + ".json", "r") as file:
         json_data = file.read()
     sets_by_dataset_dict = json.loads(json_data)
 
-    if amass_directory != None:
+    if amass_directory is not None:
         for key, value in sets_by_dataset_dict.items():
             for subdataset_name, mocap_list in value.items():
                 sets_by_dataset_dict[key][subdataset_name] = [os.path.join(amass_directory, mocap_path) for mocap_path in mocap_list]

@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from typing import Union as U
 from typing import Optional as O
@@ -56,6 +57,8 @@ class IK:
         of the input positions
         """
 
+        warnings.warn("IK class is deprecated, use InverseKinematics instead", DeprecationWarning)
+
         # Save original shape
         original_shape = xyz_positions.shape
 
@@ -105,7 +108,7 @@ class IK:
         )
         left_mul = left_mul or body_constants.LEFT_MUL
 
-        if body_constants == None:
+        if body_constants is None:
             if None in [
                 parents,
                 childs,
@@ -190,7 +193,7 @@ class IK:
             # calculate angle between offset and real segment
             dot_prod = real @ base
             norm_prod = real_ * base_
-            angle = np.expand_dims(np.arccos(dot_prod / norm_prod), axis=-1)
+            angle = np.expand_dims(np.arccos(np.clip(dot_prod / norm_prod, -1.0, 1.0)), axis=-1)
 
             # calculate axis between offset and real segment
             cross_prod = np.cross(real, base)
@@ -198,7 +201,12 @@ class IK:
                 # adjust sign for Smpl
                 cross_prod = -cross_prod
             cross_prod_ = np.expand_dims(np.linalg.norm(cross_prod, axis=-1), axis=-1)
-            axis = cross_prod / cross_prod_
+            axis = np.divide(
+                cross_prod,
+                cross_prod_,
+                out=np.zeros_like(cross_prod, dtype=float),
+                where=cross_prod_ > 1e-12,
+            )
 
             # angle-axis (expmap) notation for the joint
             aa[:, joint] = axis * angle

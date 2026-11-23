@@ -1,4 +1,3 @@
-import pkg_resources
 import numpy as np
 from typing import Union, Optional
 import math
@@ -42,7 +41,7 @@ EVALUATION_TIMESTAMPS_60FPS = [
 EVALUATION_WINDOW_LEN_60FPS = 6
 EVALUATION_WINDOW_LEN_DICT = {
     25: EVALUATION_WINDOW_LEN_25FPS,
-    30: EVALUATION_WINDOW_LEN_60FPS / 2,
+    30: EVALUATION_WINDOW_LEN_60FPS // 2,
     60: EVALUATION_WINDOW_LEN_60FPS,
 }
 
@@ -51,32 +50,34 @@ EVALUATION_T_30 = {round(t / (1000 / 30) - 1): t for t in EVALUATION_TIMESTAMPS_
 EVALUATION_T_60 = {round(t / (1000 / 60) - 1): t for t in EVALUATION_TIMESTAMPS_60FPS}
 EVALUATION_T_DICT = {25: EVALUATION_T_25, 30: EVALUATION_T_30, 60: EVALUATION_T_60}
 
+_PDS_DIR = os.path.join(os.path.dirname(__file__), "../pds_files")
+
 H36M_PSD = {
-    "train": pkg_resources.resource_filename(__name__, "../pds_files/h36m_train_psd.npy"),
-    "test": pkg_resources.resource_filename(__name__, "../pds_files/h36m_test_psd.npy"),
-    "validation": pkg_resources.resource_filename(__name__, "../pds_files/h36m_validation_psd.npy"),
+    "train": os.path.join(_PDS_DIR, "h36m_train_psd.npy"),
+    "test": os.path.join(_PDS_DIR, "h36m_test_psd.npy"),
+    "validation": os.path.join(_PDS_DIR, "h36m_validation_psd.npy"),
 }
 
 AMASS2H36M_PSD = {
-    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass2h36m_train_psd.npy"),
-    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass2h36m_test_psd.npy"),
-    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass2h36m_validation_psd.npy"),
+    "train": os.path.join(_PDS_DIR, "amass2h36m_train_psd.npy"),
+    "test": os.path.join(_PDS_DIR, "amass2h36m_test_psd.npy"),
+    "validation": os.path.join(_PDS_DIR, "amass2h36m_validation_psd.npy"),
 }
 
 AMASS_25_PSD = {
-    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_train_psd.npy"),
-    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_test_psd.npy"),
-    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass_25_validation_psd.npy"),
+    "train": os.path.join(_PDS_DIR, "amass_25_train_psd.npy"),
+    "test": os.path.join(_PDS_DIR, "amass_25_test_psd.npy"),
+    "validation": os.path.join(_PDS_DIR, "amass_25_validation_psd.npy"),
 }
 AMASS_30_PSD = {
-    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_30_train_psd.npy"),
-    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_30_test_psd.npy"),
-    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass_30_validation_psd.npy"),
+    "train": os.path.join(_PDS_DIR, "amass_30_train_psd.npy"),
+    "test": os.path.join(_PDS_DIR, "amass_30_test_psd.npy"),
+    "validation": os.path.join(_PDS_DIR, "amass_30_validation_psd.npy"),
 }
 AMASS_60_PSD = {
-    "train": pkg_resources.resource_filename(__name__, "../pds_files/amass_60_train_psd.npy"),
-    "test": pkg_resources.resource_filename(__name__, "../pds_files/amass_60_test_psd.npy"),
-    "validation": pkg_resources.resource_filename(__name__, "../pds_files/amass_60_validation_psd.npy"),
+    "train": os.path.join(_PDS_DIR, "amass_60_train_psd.npy"),
+    "test": os.path.join(_PDS_DIR, "amass_60_test_psd.npy"),
+    "validation": os.path.join(_PDS_DIR, "amass_60_validation_psd.npy"),
 }
 AMASS_PSD_BY_FRAMERATE = {25: AMASS_25_PSD, 30: AMASS_30_PSD, 60: AMASS_60_PSD}
 
@@ -165,12 +166,13 @@ class SrnnEvaluationFrames:
         - `frame_idxs_list` (list): list of lists (num_mocap, batch, frame) of frame indices selected for the spectrum comparison.
         """
         framerate = 25
+        seq_len_frames = int(round(seq_len * framerate))
 
         frame_idxs_list = []
         for num_frames in num_frames_list:
             frame_idxs = []
-            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=seq_len * framerate):
-                frame_idxs.append(range(start_idx, start_idx + seq_len * framerate))
+            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=seq_len_frames):
+                frame_idxs.append(range(start_idx, start_idx + seq_len_frames))
             frame_idxs_list.append(frame_idxs)
 
         return frame_idxs_list
@@ -271,11 +273,12 @@ class AmassEvaluationFrames:
         if seq_len > AMASS_SEQ_LEN:
             raise ValueError("seq_len must be smaller than or equal to AMASS_SEQ_LEN(3s)")
 
+        seq_len_frames = int(round(seq_len * framerate))
         frame_idxs_list = []
         for num_frames in num_frames_list:
             frame_idxs = []
-            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=seq_len * framerate):
-                frame_idxs.append(range(start_idx, start_idx + seq_len * framerate))
+            for start_idx in AmassEvaluationFrames.get_start_indices(mocap_len=num_frames, seq_len=seq_len_frames):
+                frame_idxs.append(range(start_idx, start_idx + seq_len_frames))
             frame_idxs_list.append(frame_idxs)
 
         if sum(len(frame_idxs) for frame_idxs in frame_idxs_list) < MIN_SPECTRUM_METRICS_EVALUATION_BACH_SIZE:
@@ -285,7 +288,7 @@ class AmassEvaluationFrames:
 
 class EvaluationProtocol:
     @staticmethod
-    def initialize_metrics_dicts(fk_processor: ForwardKinematics) -> tuple([dict, dict]):
+    def initialize_metrics_dicts(fk_processor: ForwardKinematics) -> "tuple[dict, dict]":
         """
         Initialize the metrics dictionaries.
 
@@ -342,7 +345,7 @@ class EvaluationProtocol:
         body_model_type: BodyModelType,
         framerate: int,
         is_amass2h36m: bool = False,
-    ) -> tuple([dict, dict]):
+    ) -> "tuple[dict, dict]":
         """
         Load the power spectral density dictionaries.
 

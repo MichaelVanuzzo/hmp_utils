@@ -38,17 +38,8 @@ class ForwardKinematics:
             (Human3.6M way). Automatically set with the set_body_model_type() function.
         - `correction_factor` (float)(optional): a factor to scale the offsets, default is 1.0.
         """
-        if not isinstance(offsets, np.ndarray):
-            self.body_link_offsets = np.array(offsets)
-        else:
-            self.body_link_offsets = offsets
-
-        self.body_link_offsets *= correction_factor
-
-        if not isinstance(parents, np.ndarray):
-            self.parents = np.array(parents)
-        else:
-            self.parents = parents
+        self.body_link_offsets = np.array(offsets, dtype=float, copy=True) * correction_factor
+        self.parents = np.array(parents, copy=True)
 
         if len(self.body_link_offsets) != len(self.parents):
             raise Exception("Length of keypoint offsets should have same length of keypoint parents list")
@@ -117,7 +108,7 @@ class ForwardKinematics:
             The number of joints must be equal to the total number of keypoints which position needs to be computed.
         - `apply_root_rotation` (bool): if set to True, the root joint will rotate with respect to world
         - `root_translation` (np.ndarray)(optional): if root_translation is used, the keypoint positions are translated by
-            a global transaltion.
+            a global translation.
         - `return_type` (FkReturnType): return keypoints positions by default. If rotations is chose, then rotation
             matrices representing keypoint global orientations are returned.
         ---
@@ -182,15 +173,15 @@ class ForwardKinematics:
                 keypoint_global_position = np.matmul(relative_offset, parent_rotmat) + parent_position
                 keypoint_global_rotmat = np.matmul(relative_rotmat, parent_rotmat)
 
-                keypont_global_transf_mat = np.full(shape=(frames_num, 4, 4), fill_value=np.eye(4))
-                keypont_global_transf_mat[:, :3, :3] = keypoint_global_rotmat
-                keypont_global_transf_mat[:, :3, 3] = np.reshape(keypoint_global_position, (frames_num, 3))
+                keypoint_global_transf_mat = np.full(shape=(frames_num, 4, 4), fill_value=np.eye(4))
+                keypoint_global_transf_mat[:, :3, :3] = keypoint_global_rotmat
+                keypoint_global_transf_mat[:, :3, 3] = np.reshape(keypoint_global_position, (frames_num, 3))
             else:
                 # for SMPL
-                keypont_global_transf_mat = np.matmul(parent_transform, relative_transf_mat[:, keypoint_idx])
+                keypoint_global_transf_mat = np.matmul(parent_transform, relative_transf_mat[:, keypoint_idx])
 
             # Store the world transformation matrix of the current joint
-            global_transf_mat[:, keypoint_idx] = keypont_global_transf_mat
+            global_transf_mat[:, keypoint_idx] = keypoint_global_transf_mat
 
         # return 3d positions or 3x3 rotation matrices
         if return_type == FkReturnType.POSITIONS:

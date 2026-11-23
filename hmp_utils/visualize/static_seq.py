@@ -30,12 +30,14 @@ def translate_and_rotate_poses(poses, axis, theta, offset_next_pose, offset_sequ
     Returns:
         np.array: poses of the body after translation and rotation
     """
+    poses = np.array(poses, dtype=float, copy=True)
+    rot_mat = generate_rotation_matrix(axis, theta) if axis is not None and theta != 0 else None
     for sequence in range(len(poses)):
         for frame in range(len(poses[sequence])):
             for joint in range(len(poses[sequence, frame])):
                 keypoint_pos = poses[sequence, frame, joint]
-                rot_mat = generate_rotation_matrix(axis, theta)
-                keypoint_pos = dot(rot_mat, keypoint_pos)
+                if rot_mat is not None:
+                    keypoint_pos = dot(rot_mat, keypoint_pos)
                 keypoint_pos[0] += frame * offset_next_pose
                 keypoint_pos[2] -= sequence * offset_sequences
                 poses[sequence, frame, joint] = keypoint_pos
@@ -44,8 +46,8 @@ def translate_and_rotate_poses(poses, axis, theta, offset_next_pose, offset_sequ
 
 def plot_static_seq(
     poses_list: np.array,
-    body_names_colors: Optional[list],
     body_model_type: BodyModelType,
+    body_names_colors: Optional[list] = None,
     offset_next_pose: float = 1,
     offset_sequences: float = 0,
     color_list: Optional[list] = None,
@@ -70,9 +72,9 @@ def plot_static_seq(
     """
     Plot a sequence of static poses
     Args:
-    - poses_list (np.array): np.array of poses where the fisrst dimension is the number of sequences and the second is the number of poses
-    - body_names_colors (list, optional): list of tuples (body_name, color) to print
+    - poses_list (np.array): np.array of poses where the first dimension is the number of sequences and the second is the number of poses
     - body_model_type (BodyModelType): body model type
+    - body_names_colors (list, optional): list of tuples (body_name, color) to print
     - offset_next_pose (float): offset to translate the body along the first axis
     - offset_sequences (float): offset to translate the body along the second axis
     - rotation_axis (list, optional): axis of rotation defined as a list of 3 coordinates. Defaults to None.
@@ -87,8 +89,6 @@ def plot_static_seq(
     - color_list (list, optional): list of color tuples to plot the skeleton (joints color, keypoints color)
     - keypoint_marker (str, optional): type of marker for the keypoints. Defaults to 'o'.
     - show_keypoint_id (bool, optional): whether to show keypoint ID. Defaults to True.
-    - elevation (int, optional): elevation angle of camera view. Defaults to 0.
-    - azimuth (int, optional): angle of camera view. Defaults to -90.
     - show_grid (bool, optional): whether to show grid. Defaults to False.
     - legend_location (str, optional): location of the plot legened
     - fig_opts (dict()): options for the pyplot.figure() call

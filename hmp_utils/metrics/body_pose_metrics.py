@@ -50,7 +50,9 @@ class MetricsProcessor:
             self.targets_aa = np.array(targets)
         else:
             self.targets_aa = targets
-        if not isinstance(joints_to_compute, np.ndarray):
+        if joints_to_compute is None:
+            self.joints_to_compute = np.arange(self.targets_aa.shape[-2])
+        elif not isinstance(joints_to_compute, np.ndarray):
             self.joints_to_compute = np.array(joints_to_compute)
         else:
             self.joints_to_compute = joints_to_compute
@@ -61,9 +63,6 @@ class MetricsProcessor:
             )
         if self.predictions_aa.shape != self.targets_aa.shape:
             raise Exception("Targets and predictions must have same shapes")
-
-        if self.joints_to_compute is None:
-            joints_to_compute = [i for i in np.arange(self.targets_aa.shape[-2])]
 
     def euler_error(
         self,
@@ -115,6 +114,7 @@ class MetricsProcessor:
             # The resulting error tensor will have n_joints Euler distance per time step per sequence
             euc_distance = np.linalg.norm(euler_targs - euler_preds, axis=-1)
             euc_distance = np.average(euc_distance, axis=-1, weights=joint_weights)  # (..., )
+            euc_distance = np.reshape(euc_distance, return_shape)  # (..., )
 
         else:
             # reshape to (-1, n_joints*3)
@@ -339,7 +339,7 @@ class MetricsPostProcessor:
         ### Returns:
         The error at the specified frame.
         """
-        self.__is_valid_frame(at_frame)
+        at_frame = self.__is_valid_frame(at_frame)
         return self.errors[at_frame]
 
     def windowed_mean(self, at_frame: int, window_len_frames: Optional[int] = None) -> float:
@@ -383,7 +383,7 @@ class MetricsPostProcessor:
         if frame not in range(-num_frames, num_frames):
             raise Exception(f"Provided frame index is not valid: {frame}. " f"Number of frames in errors array: {num_frames}")
         if frame < 0:
-            return len(self.errors + frame)
+            return len(self.errors) + frame
         return frame
 
 
@@ -475,7 +475,7 @@ class SpectrumMetricsProcessor:
             return np.reshape(seq_ps_global, (-1, n_joints, feature_size))  # (ps_len, n_joints, 3)
 
     @staticmethod
-    def remove_static_joints(seq_ps: np.ndarray) -> (np.ndarray, list):
+    def remove_static_joints(seq_ps: np.ndarray) -> "tuple[np.ndarray, list]":
         """
         Remove the joints that are static (zero power spectral density).
 
@@ -615,7 +615,10 @@ class SpectrumMetricsProcessor:
             seq_ps_h = seq_h  # (ps_len, n_joints, 3)
 
         smp = SpectrumMetricsProcessor
-        jd_divergence = smp.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2) / 2 + smp.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2) / 2  # (n_joints, 3)
+        jd_divergence = (
+            smp.kl_divergence(seq_ps_g, (seq_ps_g + seq_ps_h) / 2, get_mean=False) / 2
+            + smp.kl_divergence(seq_ps_h, (seq_ps_g + seq_ps_h) / 2, get_mean=False) / 2
+        )  # (n_joints, 3)
 
         if get_mean:
             return np.mean(jd_divergence)  # float
@@ -655,10 +658,6 @@ class SpectrumMetricsProcessor:
         if not isinstance(seq_v, np.ndarray):
             seq_v = np.array(seq_v)
 
-        # # Implementation of the Wasserstein distance using scipy.stats.wasserstein_distance with a trick
-        # feature_size = seq_u.shape[-1]
-        # n_joints = seq_u.shape[-2]
-
         if framerate is not None:
             seq_ps_u = SpectrumMetricsProcessor.power_spectral_density(seq_u, framerate, normalize=True)  # (ps_len, n_joints, 3)
             seq_ps_v = SpectrumMetricsProcessor.power_spectral_density(seq_v, framerate, normalize=True)  # (ps_len, n_joints, 3)
@@ -668,19 +667,6 @@ class SpectrumMetricsProcessor:
 
         if seq_ps_u.shape != seq_ps_v.shape:
             raise Exception("The power spectrums must have the same shape to compute the wasserstein distance")
-
-        # # Implementation of the Wasserstein distance using scipy.stats.wasserstein_distance with a trick
-        # ps_len = seq_ps_u.shape[0]
-        # frequencies = np.arange(ps_len) / time_window_len  # (ps_len, )
-        # w_distance = np.zeros((n_joints, feature_size))  # (n_joints, 3)
-        # for i in range(n_joints):
-        #     for j in range(feature_size):
-        #         w_distance[i][j] = stats.wasserstein_distance(
-        #             frequencies,
-        #             frequencies,
-        #             seq_ps_u[:, i, j],
-        #             seq_ps_v[:, i, j],
-        #         )
 
         # Compute the cumulative sum of the power spectral densities
         seq_ps_u = np.cumsum(seq_ps_u, axis=0)  # (ps_len, n_joints, 3)

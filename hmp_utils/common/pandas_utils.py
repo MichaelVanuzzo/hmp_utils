@@ -44,16 +44,20 @@ class TableManager:
         row_num, col_num = self.data.shape
 
         # create index if missing
-        if index == None:
+        if index is None:
             self.index = [f"Row [{i}]" for i in range(row_num)]
         else:
             self.index = index
+        if len(self.index) != row_num:
+            raise ValueError(f"Index length ({len(self.index)}) must match number of rows ({row_num})")
 
         # create header if missing
-        if header == None:
+        if header is None:
             self.header = [f"Col [{i}]" for i in range(col_num)]
         else:
             self.header = header
+        if len(self.header) != col_num:
+            raise ValueError(f"Header length ({len(self.header)}) must match number of columns ({col_num})")
 
         # pd options
         pd.options.display.float_format = "{: 6.3f} |".format
@@ -80,14 +84,14 @@ class TableManager:
         - `str` if to_string is True.
         """
         # check if the inputs are valid and format the data
-        rows = rows if rows != None else list(range(self.data.shape[0]))
-        columns = columns if columns != None else list(range(self.data.shape[1]))
+        rows = rows if rows is not None else list(range(self.data.shape[0]))
+        columns = columns if columns is not None else list(range(self.data.shape[1]))
         index = [self.index[i] for i in rows]
         header = [self.header[i] for i in columns]
 
         # create dataframe
         dataframe = pd.DataFrame(
-            self.data[rows, columns],
+            self.data[np.ix_(rows, columns)],
             columns=header,
             index=index,
         )
@@ -115,9 +119,11 @@ class TableManager:
         """
 
         # create a valid name
-        if file_name != None:
+        if file_name is not None:
             if not file_name.endswith(".csv"):
                 file_name = file_name + ".csv"
+        elif self.table_name == "":
+            file_name = "table.csv"
         else:
             file_name = f"{self.table_name.replace(' ', '_')}.csv"
 

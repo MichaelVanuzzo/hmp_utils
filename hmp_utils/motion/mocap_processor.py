@@ -23,7 +23,7 @@ class MocapData:
         self,
         rots: np.ndarray,
         trans: np.ndarray,
-        betas: np.ndarray,
+        betas: Optional[np.ndarray],
         original_framerate: float,
         framerate: float,
         gender: str,
@@ -35,6 +35,7 @@ class MocapData:
         ### Args:
         - `rots` (np.ndarray): rotations of joints with shape (num_frames, num_joints, 3)
         - `trans` (np.ndarray): translation of root joint (num_frames, 1, 3)
+        - `betas` (Optional[np.ndarray]): shape parameters of the mocap
         - `original_framerate` (float): original framerate of the mocap
         - `framerate` (float): framerate of the mocap
         - `gender` (str): gender of the mocap
@@ -146,7 +147,7 @@ class MocapLoader:
         """
         The body model type is used to determine the dataset (human3.6m or AMASS).
 
-        The loaded trajectory will be downsampled to the target framerate, using slerp by default.
+        The loaded trajectory will be downsampled to the target framerate, using resample by default.
         If no target_framerate is provided, the trajectories will not be downsampled.
 
         ---
@@ -160,7 +161,7 @@ class MocapLoader:
         self.body_model_type = body_model_type
         self.keypoint_ids_to_load = keypoint_ids_to_load
 
-        if target_framerate == None:
+        if target_framerate is None:
             self.target_framerate = target_framerate
         else:
             if target_framerate > 0:
@@ -258,6 +259,7 @@ class MocapLoader:
             return MocapData(
                 rot_trajectory,
                 trans_trajectory,
+                None,
                 original_framerate,
                 original_framerate,
                 gender="neutral",
@@ -283,6 +285,7 @@ class MocapLoader:
         return MocapData(
             rot_trajectory,
             trans_trajectory,
+            None,
             original_framerate,
             downsampled_framerate,
             gender="neutral",
@@ -433,9 +436,9 @@ class Amass2HumanConverter:
         self.human_keypoint_to_skip = [4, 5, 9, 10, 15, 20, 21, 22, 23, 28, 29, 30, 31]
 
         # compute rotation matrices
-        self.aligning_rotmats = self.__compute_alining_rotmats()
+        self.aligning_rotmats = self.__compute_aligning_rotmats()
 
-    def __compute_alining_rotmats(self):
+    def __compute_aligning_rotmats(self):
         """
         Compute the rotation matrices to align the human3.6m skeleton with the amass skeleton.
         """
@@ -510,6 +513,21 @@ class Amass2HumanConverter:
         # Compute cross product and dot product
         cross_product = np.cross(vec1, vec2)
         dot_product = np.dot(vec1, vec2)
+        norm_cross = np.linalg.norm(cross_product)
+        if norm_cross < 1e-12:
+            if dot_product > 0:
+                return np.eye(3)
+            ortho = np.array([1.0, 0.0, 0.0]) if abs(vec1[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+            axis_180 = np.cross(vec1, ortho)
+            axis_180 /= np.linalg.norm(axis_180)
+            skew_180 = np.array(
+                [
+                    [0, -axis_180[2], axis_180[1]],
+                    [axis_180[2], 0, -axis_180[0]],
+                    [-axis_180[1], axis_180[0], 0],
+                ]
+            )
+            return np.eye(3) + 2.0 * skew_180.dot(skew_180)
 
         # Compute skew-symmetric matrix
         skew_symmetric_matrix = np.array(
@@ -522,7 +540,7 @@ class Amass2HumanConverter:
 
         # Compute rotation matrix
         rotation_matrix = (
-            np.eye(3) + skew_symmetric_matrix + skew_symmetric_matrix.dot(skew_symmetric_matrix) * ((1 - dot_product) / (np.linalg.norm(cross_product) ** 2))
+            np.eye(3) + skew_symmetric_matrix + skew_symmetric_matrix.dot(skew_symmetric_matrix) * ((1 - dot_product) / (norm_cross ** 2))
         )
         return rotation_matrix
 
@@ -551,7 +569,8 @@ class Amass2HumanConverter:
         human_rots = np.zeros((num_frames, num_joints, 3))
         amass_rotmat = RotConverter.aa2rotmat(amass_rots)
 
-        for keypoint in range(1, num_joints):  # TODO: and keypoint 0???
+        # Root orientation (keypoint 0) is kept at zero; only root translation is preserved
+        for keypoint in range(1, num_joints):
             if keypoint in self.human_keypoint_to_skip:
                 pass
             else:
@@ -561,12 +580,13 @@ class Amass2HumanConverter:
                         self.aligning_rotmats[keypoint],
                     )
                 )
-                # need to swap components
-                if keypoint in [16, 17, 18, 19]:  # TODO: WTF?
+                # In SMPL T-pose arms extend along +-X, whereas in H3.6M rest pose they hang along +Y
+                # (+-90 deg around Z); swap local X and Y rotation axes accordingly
+                if keypoint in [16, 17, 18, 19]:
                     human_rots[:, keypoint] = human_rots[:, keypoint, [1, 0, 2]]
                     human_rots[:, keypoint] *= (-1, 1, 1)
 
-                if keypoint in [24, 25, 26, 27]:  # TODO: WTF?
+                if keypoint in [24, 25, 26, 27]:
                     human_rots[:, keypoint] = human_rots[:, keypoint, [1, 0, 2]]
                     human_rots[:, keypoint] *= (1, -1, 1)
 

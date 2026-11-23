@@ -40,7 +40,7 @@ class Table:
         self.table_name = table_name
 
         # create index if missing
-        if index == None:
+        if index is None:
             index = [f"Row [{i}]" for i in range(row_num)]
         # check if the index is valid
         if len(index) != row_num:
@@ -48,7 +48,7 @@ class Table:
         self.index = index
 
         # create header if missing
-        if header == None:
+        if header is None:
             header = [f"Col [{i}]" for i in range(col_num)]
         # check if the header is valid
         if len(header) != col_num:
@@ -81,9 +81,9 @@ class Table:
         - to_string (bool): if set to True returns the table as a string instead of printing it.
         """
         # check if the inputs are valid and format the data
-        rows = rows if rows != None else list(range(self.data.shape[0]))
-        columns = columns if columns != None else list(range(self.data.shape[1]))
-        if header != None:
+        rows = rows if rows is not None else list(range(self.data.shape[0]))
+        columns = columns if columns is not None else list(range(self.data.shape[1]))
+        if header is not None:
             if len(header) != len(columns):
                 raise Exception("header and columns must have the same number of elements\n" f"header = {len(header)}\n" f"columns = {len(columns)}\n")
             header = [f"{i} |" for i in header]
@@ -160,7 +160,7 @@ class Table:
         """
 
         # create a valid name
-        if file_name != None:
+        if file_name is not None:
             if not file_name.endswith(".csv"):
                 file_name = file_name + ".csv"
         else:

@@ -11,13 +11,11 @@ class BodyConstants:
 
     NUM_KEYPOINTS: int
     KEYPOINTS: "list[int]"
-    PARENTS: "list[int, int]"
-    # JOINTS = "list[int]"
-    # END_EFFECTORS: "list[int]"
+    PARENTS: "list[int]"
     MAJOR_JOINTS: "list[int]"
     JOINTS_TO_IGNORE: "list[int]"
     JOINT_TO_NORMALIZE: int
-    JOINT_NAMES: "list[int, str]"
+    JOINT_NAMES: "list[str]"
     OFFSETS: list
     OFFSETS_ARE_RELATIVE: bool
     LEFT_MUL: bool
@@ -59,11 +57,6 @@ class SmplConstants(BodyConstants):
         23: 21,
     }
     PARENTS = list(PARENTS_.values())
-
-    # Keypoints called joints are those which perform rotation relative to their parent
-    # JOINTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21]
-    # Keypoints that are at the end of the kinematics tree
-    # END_EFFECTORS = [10, 11, 15, 22, 23]
 
     # Subset of keypoints used in metrics
     MAJOR_JOINTS = [
@@ -377,11 +370,6 @@ class H36MConstants(BodyConstants):
     }
     PARENTS = list(PARENTS_.values())
 
-    # Keypoints called joints are those which perform rotation relative to their parent
-    # JOINTS = []
-    # Keypoints that are at the end of the kinematics tree
-    # END_EFFECTORS = []
-
     # Subset of keypoints used in metrics
     MAJOR_JOINTS = [
         0,
@@ -498,7 +486,7 @@ class H36MConstants(BodyConstants):
         [0.00000000e00, 0.00000000e00, 0.00000000e00],
     ]
 
-    # OFFSETS_ARE_RELATIVE: indicates that offsets are global, so referred to the root joint
+    # OFFSETS_ARE_RELATIVE: indicates that offsets are relative to the parent joint
     OFFSETS_ARE_RELATIVE = True
 
     # LEFT_MUL: forward kinematics computation needs to know in which order to perform matrix multiplication

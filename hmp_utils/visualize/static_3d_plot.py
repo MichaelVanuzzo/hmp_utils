@@ -73,8 +73,6 @@ def plot_body_keypoints(
         ]
 
     fig_opts = {} if fig_opts is None else fig_opts
-    # if fig_opts is None:
-    #     fig_opts = {"figsize": (10, 10), "dpi": 80}
 
     if fig_opts is not None:
         fig = plt.figure(**fig_opts)
@@ -85,6 +83,8 @@ def plot_body_keypoints(
         keypoint_pos_lst = [keypoint_pos_lst]
         if keypoint_names is not None:
             keypoint_names = [keypoint_names]
+        if link_style is not None:
+            link_style = [link_style]
     elif num_independent_bodies < 1:
         raise Exception("num_independent_bodies must be >=1")
 
@@ -137,7 +137,7 @@ def plot_body_keypoints(
             parent_point = pose[parent]
             l_style = "-"
             if link_style is not None:
-                l_style = f"{i}: {link_style[pose_id][i]}" if i < len(keypoint_names[pose_id]) else "-"
+                l_style = link_style[pose_id][i] if i < len(link_style[pose_id]) else "-"
             # if it has a parent (not itself and not -1), connect it with a line
             if parent != i and parent != -1:
                 ax.plot(
@@ -195,7 +195,7 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     Set parents to None in order to use the origin as a parent for all the points.
     """
 
-    def plot_body_keypoints(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
+    def _update_plot(elevation_slider, azimuth_slider, view_axis_slider, view_joint_slider):
         return plot_body_keypoints(
             keypoint_pos_lst=frame_joint_pos,
             parents_lst=parents,
@@ -214,7 +214,7 @@ def interactive_plot_body_keypoints(frame_joint_pos, parents, fig_opts=None, **k
     view_joint_slider = widgets.IntSlider(min=0, max=1, value=1, description="Joint IDs")
 
     widgets.interact(
-        plot_body_keypoints,
+        _update_plot,
         elevation_slider=elevation_slider,
         azimuth_slider=azimuth_slider,
         view_axis_slider=view_axis_slider,

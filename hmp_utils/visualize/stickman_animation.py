@@ -7,13 +7,6 @@ from IPython.display import display, HTML
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 
-"""
-#TODO:
-- add automatic colors when multiple bodies are visualized in the same subplot
-- add to the pose_animation function the ability to have a parents list for each
-    body pose motion, since right now it uses the same parents for all motions
-"""
-
 
 class AnimationMode(Enum):
     HTML = auto()
@@ -139,7 +132,7 @@ def pose_animation(
     for mocap_id, mocap_positions in enumerate(mocap_list):
         ax_id = subplot_ids[mocap_id]
         ax = axes[ax_id]
-        # le linee sono inizializzate nel primo frame del mocap
+        # initialize lines at the first frame of the mocap
         keypoint_positions = mocap_positions[0]
 
         ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
@@ -228,9 +221,10 @@ def pose_animation(
 
             if follow_root:
                 # update camera
-                span = 1.0 
-                root_pos = mocap_list[0][frame][0]
-                
+                span = 1.0
+                ax = axes[subplot_ids[mocap_id]]
+                root_pos = keypoint_positions[0]
+
                 ax.set_xlim3d(root_pos[0] - span, root_pos[0] + span)
                 ax.set_ylim3d(root_pos[1] - span, root_pos[1] + span)
                 ax.set_zlim3d(root_pos[2] - 1.0, root_pos[2] + 1.0)

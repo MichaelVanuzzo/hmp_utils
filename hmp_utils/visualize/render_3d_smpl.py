@@ -1,19 +1,3 @@
-# -*- coding: utf-8 -*-
-
-# Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
-# holder of all proprietary rights on this computer program.
-# You can only use this computer program if you have closed
-# a license agreement with MPG or you get the right to use the computer
-# program from someone who is authorized to grant you that right.
-# Any use of the computer program without a valid license is prohibited and
-# liable to prosecution.
-#
-# Copyright©2019 Max-Planck-Gesellschaft zur Förderung
-# der Wissenschaften e.V. (MPG). acting on behalf of its Max Planck Institute
-# for Intelligent Systems. All rights reserved.
-#
-# Contact: ps-license@tuebingen.mpg.de
-
 import os
 import time
 import torch
@@ -68,8 +52,6 @@ def img_from_pyrender(vertices, vertex_colors, model_faces, width=800, height=80
     # solid body
     renderer = pyrender.OffscreenRenderer(width, height)
     render_flags = pyrender.RenderFlags.FACE_NORMALS | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.RGBA
-    # pyrender.RenderFlags.ALL_SOLID
-    # pyrender.RenderFlags.ALL_WIREFRAME
     render_output = renderer.render(scene, flags=render_flags)
 
     assert render_output is not None
@@ -81,7 +63,6 @@ def img_from_pyrender(vertices, vertex_colors, model_faces, width=800, height=80
 
     # wireframe
     render_flags = pyrender.RenderFlags.FACE_NORMALS | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.RGBA | pyrender.RenderFlags.ALL_WIREFRAME
-    # pyrender.RenderFlags.ALL_SOLID
     render_output = renderer.render(scene, flags=render_flags)
 
     assert render_output is not None
@@ -95,7 +76,6 @@ def img_from_pyrender(vertices, vertex_colors, model_faces, width=800, height=80
 
     img = Image.composite(img1, img2, mask=img1)
 
-    # img.save(image_save_path)
     img = np.array(img)
     return img
 
@@ -105,14 +85,14 @@ def img_from_matplotlib(vertices, model_faces, elev=90, azim=-90, figsize=(8, 8)
     from matplotlib import pyplot as plt
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection="3d")
     ax.axis("equal")
     ax.axis("off")
     ax.view_init(elev=elev, azim=azim)
-    ax.axes.set_xlim3d(-1, 1)
-    ax.axes.set_ylim3d(-1, 1)
-    ax.axes.set_zlim3d(-1, 1)
+    ax.axes.set_xlim3d(*lim3D)
+    ax.axes.set_ylim3d(*lim3D)
+    ax.axes.set_zlim3d(*lim3D)
 
     mesh = Poly3DCollection(vertices[model_faces], alpha=0.3)
     edge_color = (0.1, 0.1, 0.1)
