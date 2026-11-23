@@ -9,7 +9,7 @@ setup(
     packages=find_packages(),
     license="GNU Affero General Public License v3 (AGPL-3.0)",
     license_files=("LICENSE",),
-    # url="",  # You may want to add a project URL here
+    url="https://github.com/MichaelVanuzzo/hmp_utils",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU Affero General Public License v3",
