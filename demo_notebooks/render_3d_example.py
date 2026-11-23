@@ -81,14 +81,10 @@ if __name__ == "__main__":
     args = parse_args()
 
     # overwrite default arguments
-    args.model_folder = "/home/vanuzzo/hmp_utils/demo_notebooks/smpl_model/SMPLX_NEUTRAL.npz"
+    # Download SMPL-X body models from https://smpl-x.is.tue.mpg.de/
+    args.model_folder = "path/to/smpl_model/SMPLX_NEUTRAL.npz"
     args.output_name = f'render_{time.asctime().replace(":", "_").replace(" ", "_")}.mp4'
     args.processors = 96
-
-    # joints_to_load = 22  # dont' load the hands
-    # frame_to_load = slice(0, amass_data["poses"].shape[0], framerate_factor)
-    # amass_smpl_poses = np.array(amass_data["poses"])[frame_to_load, 3 : joints_to_load * 3]
-    # mocap_poses = np.array(amass_smpl_poses, dtype=np.float32)
 
     filepath = "./example_mocaps/walking_poses.npz"
     animation_framerate = 25

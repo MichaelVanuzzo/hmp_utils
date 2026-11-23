@@ -1,8 +1,8 @@
 """
 # Visualization Demo Script
 
-This script is inteded for testing / demoing the stickman visualization utility.
-You can change the animation parameters to test different options or 
+This script is intended for testing / demoing the stickman visualization utility.
+You can change the animation parameters to test different options.
 The example mocap is an AMASS dataset sample you can download from [here](https://amass.is.tue.mpg.de/index.html).
 """
 
@@ -25,6 +25,7 @@ assert motion is not None
 
 # -- compute joint positions --
 kine = ForwardKinematics(SmplConstants.OFFSETS, SmplConstants.PARENTS)
+kine.set_body_model_type(SmplConstants.BODY_MODEL_TYPE)
 keypoints_positions = kine.compute_fk(motion.rots, apply_root_rotation=True)
 
 # -- ask user --

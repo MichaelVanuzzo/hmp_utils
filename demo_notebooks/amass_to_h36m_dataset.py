@@ -21,8 +21,9 @@ mocap_loader = MocapLoader(
     target_framerate=target_framerate,
 )
 converter = Amass2HumanConverter()
-amass_path = "/home/vanuzzo/datasets/AMASS_H"
-save_dir = f"/home/vanuzzo/datasets/Amass_H2Human_{target_framerate}fps"
+# Download AMASS from https://amass.is.tue.mpg.de/
+amass_path = "path/to/datasets/AMASS_H"
+save_dir = f"path/to/datasets/Amass_H2Human_{target_framerate}fps"
 datasets = AMASS_DATASETS
 
 
