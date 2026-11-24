@@ -23,5 +23,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Virtual environments
+.venv/
+venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
 # VSCode files
 .vscode

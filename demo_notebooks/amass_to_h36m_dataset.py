@@ -3,8 +3,6 @@ import sys
 from glob import glob
 from tqdm import tqdm
 
-if "../" not in sys.path:
-    sys.path.append("../")
 from hmp_utils import (
     MocapLoader,
     Amass2HumanConverter,
@@ -28,11 +26,7 @@ datasets = AMASS_DATASETS
 
 
 def is_valid_mocap(mocap_str: str) -> bool:
-    return (
-        mocap_str.endswith(".npz")
-        and "stagei.npz" not in mocap_str
-        and "shape.npz" not in mocap_str
-    )
+    return mocap_str.endswith(".npz") and "stagei.npz" not in mocap_str and "shape.npz" not in mocap_str
 
 
 print("Start of conversion", flush=True)
@@ -40,9 +34,7 @@ for it, dataset in enumerate(datasets):
     pathname = os.path.join(amass_path, dataset, "**", "*.npz")
     mocap_paths_list = glob(pathname, recursive=True)
     # Iterate over all the dataset
-    for action_path in tqdm(
-        mocap_paths_list, desc=f"Converting {dataset} ({it+1}/{len(datasets)})"
-    ):
+    for action_path in tqdm(mocap_paths_list, desc=f"Converting {dataset} ({it+1}/{len(datasets)})"):
         sys.stdout.flush()
         if not is_valid_mocap(action_path):
             continue

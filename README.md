@@ -13,18 +13,29 @@ See `demo_notebooks/` for usage examples.
 
 ## Installation
 
+Using a dedicated Python virtual environment (`venv` or `conda`) is recommended.
+
 ### From GitHub
 
 ```bash
 pip install git+https://github.com/MichaelVanuzzo/hmp_utils.git
 ```
 
-### From Local Source
+### From Local Source (for development or running `demo_notebooks/`)
 
 ```bash
 git clone https://github.com/MichaelVanuzzo/hmp_utils.git
 cd hmp_utils
-pip install .
+
+# Optional (recommended): create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -e .
+
+# Optional: register the environment as a Jupyter kernel to run demo_notebooks/
+pip install ipykernel
+python -m ipykernel install --user --name hmp-utils --display-name "Python (hmp_utils)"
 ```
 
 ## Demo Notebooks & Scripts
