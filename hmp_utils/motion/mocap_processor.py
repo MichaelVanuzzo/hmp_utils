@@ -255,7 +255,7 @@ class MocapLoader:
         rot_trajectory = rot_trajectory[:, self.keypoint_ids_to_load, :]
 
         # don't downsample
-        if framerate_difference <= self.downsampling_tolerance:
+        if framerate_difference <= self.downsampling_tolerance or self.downsampling_method == DownsampleMethod.NONE:
             return MocapData(
                 rot_trajectory,
                 trans_trajectory,
@@ -358,7 +358,7 @@ class MocapLoader:
         rot_trajectory = rot_trajectory[:, self.keypoint_ids_to_load, :]
 
         # don't downsample
-        if framerate_difference <= self.downsampling_tolerance:
+        if framerate_difference <= self.downsampling_tolerance or self.downsampling_method == DownsampleMethod.NONE:
             return MocapData(
                 rot_trajectory,
                 trans_trajectory,
